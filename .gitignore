@@ -179,3 +179,18 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+
+# raw_Data
+raw_data/
+
+# processed_data: 只忽略可快速重新生成的大文件
+# arXiv 单独分类 (541K 篇，4个脚本重新生成 <5分钟)
+processed_data/classification_arxiv/
+# 检索语料 (566K 篇，merge 脚本重新生成)
+processed_data/arxiv_PeerRead_merge_data/retrieval/corpus_merged.jsonl
+# 检索对比对 (merge 脚本重新生成)
+processed_data/arxiv_PeerRead_merge_data/retrieval/merged_*_pairs.jsonl
+# PeerRead 检索 (PeerRead_processed 重新生成)
+processed_data/PeerRead_processed_data/retrieval/
+# 模型检查点
+checkpoints/
