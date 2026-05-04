@@ -105,19 +105,18 @@ class SciBERTDomainClassifier(nn.Module):
         # 分类头
         pooled_output = self.dropout(pooled_output)
         logits = self.classifier(pooled_output)
-        probs = torch.softmax(logits, dim=-1)
-        
+        probs = torch.sigmoid(logits)
+
         result = {
             "logits": logits,
             "probs": probs
         }
-        
-        # 计算损失
+
         if labels is not None:
-            loss_fct = nn.CrossEntropyLoss()
+            loss_fct = nn.BCEWithLogitsLoss()
             loss = loss_fct(logits, labels)
             result["loss"] = loss
-        
+
         return result
 
 
@@ -143,7 +142,7 @@ class SciBERTQualityClassifier(nn.Module):
     def __init__(
         self,
         model_name: str = "allenai/scibert_scivocab_uncased",
-        num_labels: int = 2,
+        num_labels: int = 3,
         dropout_rate: float = 0.1,
         freeze_bert_layers: int = 0,
         class_weights: Optional[torch.Tensor] = None
@@ -216,13 +215,69 @@ class SciBERTQualityClassifier(nn.Module):
         return result
 
 
+class SciBERTMethodTypeClassifier(nn.Module):
+    """科研论文方法类型分类器 (Empirical, Theoretical, Survey, Benchmark)"""
+
+    LABELS = ["Empirical", "Theoretical", "Survey", "Benchmark"]
+
+    def __init__(
+        self,
+        model_name: str = "allenai/scibert_scivocab_uncased",
+        num_labels: int = 4,
+        dropout_rate: float = 0.1,
+        freeze_bert_layers: int = 0
+    ):
+        super().__init__()
+        self.num_labels = num_labels
+        self.config = AutoConfig.from_pretrained(model_name)
+        self.bert = AutoModel.from_pretrained(model_name)
+        hidden_size = self.config.hidden_size
+
+        if freeze_bert_layers > 0:
+            self._freeze_bert_layers(freeze_bert_layers)
+
+        self.dropout = nn.Dropout(dropout_rate)
+        self.classifier = nn.Linear(hidden_size, num_labels)
+        nn.init.xavier_uniform_(self.classifier.weight)
+        nn.init.zeros_(self.classifier.bias)
+
+    def _freeze_bert_layers(self, n_layers: int):
+        for param in self.bert.embeddings.parameters():
+            param.requires_grad = False
+        for i, layer in enumerate(self.bert.encoder.layer):
+            if i < n_layers:
+                for param in layer.parameters():
+                    param.requires_grad = False
+        print(f"[Model] 冻结了 SciBERT 的前 {n_layers} 层")
+
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        labels: Optional[torch.Tensor] = None
+    ) -> Dict[str, torch.Tensor]:
+        outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
+        pooled_output = outputs.last_hidden_state[:, 0, :]
+        pooled_output = self.dropout(pooled_output)
+        logits = self.classifier(pooled_output)
+        probs = torch.softmax(logits, dim=-1)
+
+        result = {"logits": logits, "probs": probs}
+        if labels is not None:
+            loss_fct = nn.CrossEntropyLoss()
+            loss = loss_fct(logits, labels)
+            result["loss"] = loss
+        return result
+
+
 class SciBERTMultiTaskClassifier(nn.Module):
     """
     多任务联合分类器
-    
+
     共享SciBERT编码器，同时训练:
-        - Domain分类头: 4类 (NLP, CV, ML, AI)
-        - Quality分类头: 2类 (accept, reject)
+        - Domain分类头: 4类多标签 (NLP, CV, ML, AI)
+        - Quality分类头: 3类单标签 (Acceptable, Borderline, Weak Reject)
+        - Method分类头: 4类单标签 (Empirical, Theoretical, Survey, Benchmark)
     
     通过共享编码器，两个任务可以互相促进:
         - Domain信息帮助判断质量预期 (不同领域的质量标准不同)
@@ -250,42 +305,47 @@ class SciBERTMultiTaskClassifier(nn.Module):
         self,
         model_name: str = "allenai/scibert_scivocab_uncased",
         num_domain_labels: int = 4,
-        num_quality_labels: int = 2,
+        num_quality_labels: int = 3,
         dropout_rate: float = 0.1,
         freeze_bert_layers: int = 0,
         domain_class_weights: Optional[torch.Tensor] = None,
         quality_class_weights: Optional[torch.Tensor] = None,
-        task_weights: list = [1.0, 1.0]
+        method_class_weights: Optional[torch.Tensor] = None,
+        task_weights: list = [1.0, 1.0, 1.0]
     ):
         super().__init__()
         self.num_domain_labels = num_domain_labels
         self.num_quality_labels = num_quality_labels
+        self.num_method_labels = getattr(self, 'num_method_labels', 4)
         self.task_weights = task_weights
         self.config = AutoConfig.from_pretrained(model_name)
-        
-        # 共享 SciBERT 编码器
+
         self.bert = AutoModel.from_pretrained(model_name)
         hidden_size = self.config.hidden_size
-        
+
         if freeze_bert_layers > 0:
             self._freeze_bert_layers(freeze_bert_layers)
-        
-        # 共享Dropout
+
         self.dropout = nn.Dropout(dropout_rate)
-        
-        # Domain分类头 (4类)
+
+        # Domain分类头 (多标签)
         self.domain_classifier = nn.Linear(hidden_size, num_domain_labels)
         nn.init.xavier_uniform_(self.domain_classifier.weight)
         nn.init.zeros_(self.domain_classifier.bias)
-        
-        # Quality分类头 (2类)
+
+        # Quality分类头
         self.quality_classifier = nn.Linear(hidden_size, num_quality_labels)
         nn.init.xavier_uniform_(self.quality_classifier.weight)
         nn.init.zeros_(self.quality_classifier.bias)
-        
-        # 类别权重
+
+        # Method type分类头
+        self.method_classifier = nn.Linear(hidden_size, self.num_method_labels)
+        nn.init.xavier_uniform_(self.method_classifier.weight)
+        nn.init.zeros_(self.method_classifier.bias)
+
         self.register_buffer('domain_class_weights', domain_class_weights)
         self.register_buffer('quality_class_weights', quality_class_weights)
+        self.register_buffer('method_class_weights', method_class_weights)
     
     def _freeze_bert_layers(self, n_layers: int):
         """冻结SciBERT前n层"""
@@ -302,54 +362,44 @@ class SciBERTMultiTaskClassifier(nn.Module):
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         domain_labels: Optional[torch.Tensor] = None,
-        quality_labels: Optional[torch.Tensor] = None
+        quality_labels: Optional[torch.Tensor] = None,
+        method_labels: Optional[torch.Tensor] = None
     ) -> Dict[str, torch.Tensor]:
         """
-        前向传播
-        
-        Args:
-            input_ids: token IDs, (batch_size, seq_len)
-            attention_mask: 注意力掩码, (batch_size, seq_len)
-            domain_labels: 领域标签, (batch_size,)
-            quality_labels: 质量标签, (batch_size,)
-        
-        Returns:
-            字典包含:
-                - domain_logits: (batch_size, 4)
-                - domain_probs: (batch_size, 4)
-                - quality_logits: (batch_size, 2)
-                - quality_probs: (batch_size, 2)
-                - domain_loss: Domain任务损失
-                - quality_loss: Quality任务损失
-                - loss: 加权总损失
+        前向传播 (三任务: domain多标签 + quality单标签 + method单标签)
         """
         # 共享编码器
         outputs = self.bert(input_ids=input_ids, attention_mask=attention_mask)
         pooled_output = outputs.last_hidden_state[:, 0, :]
         pooled_output = self.dropout(pooled_output)
-        
-        # Domain分支
+
+        # Domain (多标签)
         domain_logits = self.domain_classifier(pooled_output)
-        domain_probs = torch.softmax(domain_logits, dim=-1)
-        
-        # Quality分支
+        domain_probs = torch.sigmoid(domain_logits)
+
+        # Quality
         quality_logits = self.quality_classifier(pooled_output)
         quality_probs = torch.softmax(quality_logits, dim=-1)
-        
+
+        # Method type
+        method_logits = self.method_classifier(pooled_output)
+        method_probs = torch.softmax(method_logits, dim=-1)
+
         result = {
             "domain_logits": domain_logits,
             "domain_probs": domain_probs,
             "quality_logits": quality_logits,
-            "quality_probs": quality_probs
+            "quality_probs": quality_probs,
+            "method_logits": method_logits,
+            "method_probs": method_probs
         }
-        
-        # 计算损失 (过滤 -1 标签: -1 表示该样本不参与该任务)
+
         total_loss = 0.0
 
         if domain_labels is not None:
-            valid = domain_labels >= 0
+            valid = domain_labels.sum(dim=-1) >= 0
             if valid.any():
-                domain_loss_fct = nn.CrossEntropyLoss(weight=self.domain_class_weights)
+                domain_loss_fct = nn.BCEWithLogitsLoss(weight=self.domain_class_weights)
                 domain_loss = domain_loss_fct(domain_logits[valid], domain_labels[valid])
                 result["domain_loss"] = domain_loss
                 total_loss += self.task_weights[0] * domain_loss
@@ -361,10 +411,18 @@ class SciBERTMultiTaskClassifier(nn.Module):
                 quality_loss = quality_loss_fct(quality_logits[valid], quality_labels[valid])
                 result["quality_loss"] = quality_loss
                 total_loss += self.task_weights[1] * quality_loss
-        
-        if domain_labels is not None or quality_labels is not None:
+
+        if method_labels is not None:
+            valid = method_labels >= 0
+            if valid.any():
+                method_loss_fct = nn.CrossEntropyLoss(weight=self.method_class_weights)
+                method_loss = method_loss_fct(method_logits[valid], method_labels[valid])
+                result["method_loss"] = method_loss
+                total_loss += self.task_weights[2] * method_loss
+
+        if domain_labels is not None or quality_labels is not None or method_labels is not None:
             result["loss"] = total_loss
-        
+
         return result
 
 
@@ -393,11 +451,8 @@ class PaperClassifier:
     """
     
     DOMAIN_LABELS = ["NLP", "CV", "ML", "AI"]
-    QUALITY_LABELS = ["accept", "reject"]
-    QUALITY_TIER_MAP = {
-        "accept": "Acceptable",
-        "reject": "Weak Reject"
-    }
+    QUALITY_LABELS = ["Acceptable", "Borderline", "Weak Reject"]
+    METHOD_LABELS = ["Empirical", "Theoretical", "Survey", "Benchmark"]
     
     def __init__(
         self,
@@ -464,29 +519,30 @@ class PaperClassifier:
         
         if self.model_type == "domain":
             probs = outputs["probs"][0].cpu().numpy()
-            pred_idx = probs.argmax()
-            result["domains"] = [self.DOMAIN_LABELS[pred_idx]]
-            result["confidence"]["domain"] = float(probs[pred_idx])
-        
+            active = [self.DOMAIN_LABELS[i] for i, p in enumerate(probs) if p >= 0.5]
+            result["domains"] = active or [self.DOMAIN_LABELS[probs.argmax()]]
+            result["confidence"]["domain"] = {l: float(p) for l, p in zip(self.DOMAIN_LABELS, probs)}
+
         elif self.model_type == "quality":
             probs = outputs["probs"][0].cpu().numpy()
             pred_idx = probs.argmax()
             quality_label = self.QUALITY_LABELS[pred_idx]
-            result["quality_tier"] = self.QUALITY_TIER_MAP[quality_label]
+            result["quality_tier"] = quality_label
             result["confidence"]["quality"] = float(probs[pred_idx])
-        
+
         elif self.model_type == "multitask":
             domain_probs = outputs["domain_probs"][0].cpu().numpy()
             quality_probs = outputs["quality_probs"][0].cpu().numpy()
-            
-            domain_pred = domain_probs.argmax()
-            quality_pred = quality_probs.argmax()
-            
-            result["domains"] = [self.DOMAIN_LABELS[domain_pred]]
-            result["quality_tier"] = self.QUALITY_TIER_MAP[self.QUALITY_LABELS[quality_pred]]
+            method_probs = outputs["method_probs"][0].cpu().numpy()
+
+            active = [self.DOMAIN_LABELS[i] for i, p in enumerate(domain_probs) if p >= 0.5]
+            result["domains"] = active or [self.DOMAIN_LABELS[domain_probs.argmax()]]
+            result["quality_tier"] = self.QUALITY_LABELS[quality_probs.argmax()]
+            result["method_type"] = self.METHOD_LABELS[method_probs.argmax()]
             result["confidence"] = {
-                "domain": float(domain_probs[domain_pred]),
-                "quality": float(quality_probs[quality_pred])
+                "domain": {l: float(p) for l, p in zip(self.DOMAIN_LABELS, domain_probs)},
+                "quality": float(quality_probs[quality_probs.argmax()]),
+                "method": float(method_probs.max())
             }
         
         return result
@@ -527,16 +583,21 @@ class PaperClassifier:
             
             if self.model_type in ["domain", "multitask"]:
                 domain_probs = outputs["domain_probs"][i].cpu().numpy()
-                domain_pred = domain_probs.argmax()
-                result["domains"] = [self.DOMAIN_LABELS[domain_pred]]
-                result["confidence"]["domain"] = float(domain_probs[domain_pred])
-            
+                active = [self.DOMAIN_LABELS[j] for j, p in enumerate(domain_probs) if p >= 0.5]
+                result["domains"] = active or [self.DOMAIN_LABELS[domain_probs.argmax()]]
+                result["confidence"]["domain"] = {l: float(p) for l, p in zip(self.DOMAIN_LABELS, domain_probs)}
+
             if self.model_type in ["quality", "multitask"]:
                 quality_probs = outputs["quality_probs"][i].cpu().numpy()
                 quality_pred = quality_probs.argmax()
-                result["quality_tier"] = self.QUALITY_TIER_MAP[self.QUALITY_LABELS[quality_pred]]
+                result["quality_tier"] = self.QUALITY_LABELS[quality_pred]
                 result["confidence"]["quality"] = float(quality_probs[quality_pred])
-            
+
+            if self.model_type == "multitask":
+                method_probs = outputs["method_probs"][i].cpu().numpy()
+                result["method_type"] = self.METHOD_LABELS[method_probs.argmax()]
+                result["confidence"]["method"] = float(method_probs.max())
+
             results.append(result)
         
         return results

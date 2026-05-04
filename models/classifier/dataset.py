@@ -22,80 +22,60 @@ import os
 
 class DomainDataset(Dataset):
     """
-    领域分类数据集
-    
-    从JSONL文件加载，支持以下数据源:
-        - arxiv_train.jsonl (单独arXiv)
-        - merged_train.jsonl (arXiv + PeerRead合并)
-    
+    多标签领域分类数据集
+
+    支持:
+        - 单标签兼容: "NLP" → [1,0,0,0]
+        - 多标签: "NLP,AI" → [1,0,0,1]
+
     标签映射:
         NLP -> 0, CV -> 1, ML -> 2, AI -> 3
-    
-    Example:
-        >>> dataset = DomainDataset("processed_data/classification_arxiv/arxiv_train.jsonl")
-        >>> print(len(dataset))  # 20000
-        >>> sample = dataset[0]
-        >>> print(sample.keys())  # dict_keys(['input_ids', 'attention_mask', 'labels'])
     """
-    
+
     LABEL2ID = {"NLP": 0, "CV": 1, "ML": 2, "AI": 3}
     ID2LABEL = {v: k for k, v in LABEL2ID.items()}
-    
+    NUM_LABELS = len(LABEL2ID)
+
     def __init__(
         self,
         data_path: str,
         tokenizer_name: str = "allenai/scibert_scivocab_uncased",
         max_length: int = 512
     ):
-        """
-        Args:
-            data_path: JSONL文件路径
-            tokenizer_name: SciBERT tokenizer名称
-            max_length: 最大序列长度
-        """
         self.data_path = data_path
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-        
-        # 加载数据
         self.samples = self._load_data()
-        print(f"[DomainDataset] 加载了 {len(self.samples)} 条样本 from {data_path}")
-    
+        print(f"[DomainDataset] 加载了 {len(self.samples)} 条样本 (多标签) from {data_path}")
+
     def _load_data(self) -> List[Dict]:
-        """从JSONL文件加载数据"""
+        """从JSONL文件加载数据，支持逗号分隔的多标签"""
         samples = []
         with open(self.data_path, "r", encoding="utf-8") as f:
             for line in f:
                 item = json.loads(line.strip())
                 text = item.get("text", "")
                 label = item.get("label", "")
-                
-                # 过滤无效标签
-                if label not in self.LABEL2ID:
+                # 支持多标签: "NLP,AI" → 多热向量
+                label_names = [l.strip() for l in str(label).split(",") if l.strip()]
+                multi_hot = [0] * self.NUM_LABELS
+                for name in label_names:
+                    if name in self.LABEL2ID:
+                        multi_hot[self.LABEL2ID[name]] = 1
+                if not any(multi_hot):
                     continue
-                
                 samples.append({
                     "text": text,
-                    "label": self.LABEL2ID[label],
+                    "label": multi_hot,
                     "source": item.get("source", "unknown")
                 })
         return samples
-    
+
     def __len__(self) -> int:
         return len(self.samples)
-    
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        """
-        获取单个样本
-        
-        Returns:
-            字典包含:
-                - input_ids: (seq_len,)
-                - attention_mask: (seq_len,)
-                - labels: scalar tensor
-        """
         sample = self.samples[idx]
-        
         encoding = self.tokenizer(
             sample["text"],
             max_length=self.max_length,
@@ -103,19 +83,19 @@ class DomainDataset(Dataset):
             truncation=True,
             return_tensors="pt"
         )
-        
         return {
             "input_ids": encoding["input_ids"].squeeze(0),
             "attention_mask": encoding["attention_mask"].squeeze(0),
-            "labels": torch.tensor(sample["label"], dtype=torch.long)
+            "labels": torch.tensor(sample["label"], dtype=torch.float)
         }
-    
+
     def get_label_distribution(self) -> Dict[str, int]:
-        """获取标签分布统计"""
-        dist = {}
+        """获取标签分布统计（多标签: 每个类别独立计数）"""
+        dist = {name: 0 for name in self.LABEL2ID}
         for sample in self.samples:
-            label_name = self.ID2LABEL[sample["label"]]
-            dist[label_name] = dist.get(label_name, 0) + 1
+            for i, name in self.ID2LABEL.items():
+                if sample["label"][i]:
+                    dist[name] += 1
         return dist
 
 
@@ -127,7 +107,7 @@ class QualityDataset(Dataset):
         - quality_train.jsonl (仅PeerRead)
     
     标签映射:
-        accept -> 0, reject -> 1
+        Acceptable -> 0, Borderline -> 1, Weak Reject -> 2
     
     注意类别不平衡: accept通常占70-80%
     使用 get_class_weights() 获取用于WeightedLoss的权重
@@ -137,7 +117,7 @@ class QualityDataset(Dataset):
         >>> weights = dataset.get_class_weights()  # tensor([1.0, 3.2])
     """
     
-    LABEL2ID = {"accept": 0, "reject": 1}
+    LABEL2ID = {"Acceptable": 0, "Borderline": 1, "Weak Reject": 2}
     ID2LABEL = {v: k for k, v in LABEL2ID.items()}
     
     def __init__(
@@ -207,15 +187,16 @@ class QualityDataset(Dataset):
         Returns:
             权重张量，shape (2,)
         """
-        label_counts = [0, 0]
+        label_counts = [0] * len(self.LABEL2ID)
         for sample in self.samples:
             label_counts[sample["label"]] += 1
-        
+
         total = sum(label_counts)
-        weights = [total / (len(label_counts) * count) if count > 0 else 1.0 
+        weights = [total / (len(label_counts) * count) if count > 0 else 1.0
                    for count in label_counts]
-        
-        print(f"[QualityDataset] 类别分布: accept={label_counts[0]}, reject={label_counts[1]}")
+        names = list(self.LABEL2ID.keys())
+        dist_str = ", ".join(f"{n}={c}" for n, c in zip(names, label_counts))
+        print(f"[QualityDataset] 类别分布: {dist_str}")
         print(f"[QualityDataset] 类别权重: {weights}")
         
         return torch.tensor(weights, dtype=torch.float)
@@ -316,8 +297,17 @@ class MultiTaskDataset(Dataset):
         print(f"[MultiTaskDataset] Domain: {self.domain_len}, Quality: {self.quality_len}")
         print(f"[MultiTaskDataset] 总有效长度: {self._length}")
     
+    def _label_to_multihot(self, label: str) -> List[int]:
+        """将逗号分隔的标签字符串转为多热向量"""
+        label_names = [l.strip() for l in str(label).split(",") if l.strip()]
+        multi_hot = [0] * len(self.DOMAIN_LABEL2ID)
+        for name in label_names:
+            if name in self.DOMAIN_LABEL2ID:
+                multi_hot[self.DOMAIN_LABEL2ID[name]] = 1
+        return multi_hot
+
     def _load_domain_data(self, path: str) -> List[Dict]:
-        """加载Domain数据"""
+        """加载Domain数据 (多标签)"""
         samples = []
         if not os.path.exists(path):
             print(f"[MultiTaskDataset] WARNING: Domain数据文件不存在: {path}")
@@ -327,14 +317,15 @@ class MultiTaskDataset(Dataset):
                 item = json.loads(line.strip())
                 text = item.get("text", "")
                 label = item.get("label", "")
-                if label in self.DOMAIN_LABEL2ID:
-                    samples.append({
-                        "text": text,
-                        "domain_label": self.DOMAIN_LABEL2ID[label],
-                        # quality标签设为-1表示忽略
-                        "quality_label": -1,
-                        "has_quality": False
-                    })
+                multi_hot = self._label_to_multihot(label)
+                if not any(multi_hot):
+                    continue
+                samples.append({
+                    "text": text,
+                    "domain_label": multi_hot,
+                    "quality_label": -1,
+                    "has_quality": False
+                })
         return samples
     
     def _load_quality_data(self, path: str) -> List[Dict]:
@@ -349,38 +340,39 @@ class MultiTaskDataset(Dataset):
                 text = item.get("text", "")
                 label = item.get("label", "")
                 if label in self.QUALITY_LABEL2ID:
-                    # 尝试从quality数据推断domain标签
-                    # 如果source中包含venue信息，可以映射到domain
                     source = item.get("source", "")
                     inferred_domain = self._infer_domain_from_source(source)
 
                     samples.append({
                         "text": text,
-                        "domain_label": inferred_domain if inferred_domain is not None else -1,
+                        "domain_label": inferred_domain,
                         "quality_label": self.QUALITY_LABEL2ID[label],
                         "has_quality": True
                     })
         return samples
     
-    def _infer_domain_from_source(self, source: str) -> Optional[int]:
+    def _infer_domain_from_source(self, source: str) -> List[int]:
         """
-        从source/venue推断domain标签
-        
+        从source/venue推断domain标签 (返回多热向量)
+
         PeerRead venue映射:
             acl, conll -> NLP
             iclr, nips -> ML
             arxiv.cs.ai -> AI
         """
         source_lower = source.lower()
+        result = [0] * len(self.DOMAIN_LABEL2ID)
         if any(k in source_lower for k in ["acl", "conll", "cs.cl"]):
-            return self.DOMAIN_LABEL2ID["NLP"]
+            result[self.DOMAIN_LABEL2ID["NLP"]] = 1
         elif any(k in source_lower for k in ["iclr", "nips", "cs.lg"]):
-            return self.DOMAIN_LABEL2ID["ML"]
+            result[self.DOMAIN_LABEL2ID["ML"]] = 1
         elif "cs.ai" in source_lower:
-            return self.DOMAIN_LABEL2ID["AI"]
+            result[self.DOMAIN_LABEL2ID["AI"]] = 1
         elif "cs.cv" in source_lower:
-            return self.DOMAIN_LABEL2ID["CV"]
-        return None
+            result[self.DOMAIN_LABEL2ID["CV"]] = 1
+        else:
+            return [-1] * len(self.DOMAIN_LABEL2ID)
+        return result
     
     def __len__(self) -> int:
         return self._length
@@ -414,7 +406,7 @@ class MultiTaskDataset(Dataset):
         result = {
             "input_ids": encoding["input_ids"].squeeze(0),
             "attention_mask": encoding["attention_mask"].squeeze(0),
-            "domain_labels": torch.tensor(sample["domain_label"], dtype=torch.long),
+            "domain_labels": torch.tensor(sample["domain_label"], dtype=torch.float),
             "quality_labels": torch.tensor(sample["quality_label"], dtype=torch.long)
         }
         
@@ -422,7 +414,7 @@ class MultiTaskDataset(Dataset):
     
     def get_quality_class_weights(self) -> torch.Tensor:
         """计算Quality任务的类别权重"""
-        label_counts = [0, 0]
+        label_counts = [0] * len(self.QUALITY_LABEL2ID)
         for sample in self.quality_samples:
             if sample["quality_label"] >= 0:
                 label_counts[sample["quality_label"]] += 1
@@ -439,17 +431,77 @@ class MultiTaskDataset(Dataset):
         return torch.tensor(weights, dtype=torch.float)
     
     def get_domain_class_weights(self) -> torch.Tensor:
-        """计算Domain任务的类别权重"""
-        label_counts = [0, 0, 0, 0]
+        """计算Domain任务的类别权重 (多标签: 每个类别独立计数)"""
+        label_counts = [0] * len(self.DOMAIN_LABEL2ID)
         for sample in self.domain_samples:
-            label_counts[sample["domain_label"]] += 1
-        
+            dl = sample["domain_label"]
+            for i in range(len(self.DOMAIN_LABEL2ID)):
+                if dl[i] >= 0:
+                    label_counts[i] += dl[i]
+
         total = sum(label_counts)
         weights = [total / (len(label_counts) * count) if count > 0 else 1.0
                    for count in label_counts]
-        
+
         print(f"[MultiTaskDataset] Domain类别权重: {weights}")
         return torch.tensor(weights, dtype=torch.float)
+
+
+class MethodTypeDataset(Dataset):
+    """方法类型数据集 (Empirical, Theoretical, Survey, Benchmark)"""
+
+    LABEL2ID = {"Empirical": 0, "Theoretical": 1, "Survey": 2, "Benchmark": 3}
+    ID2LABEL = {v: k for k, v in LABEL2ID.items()}
+
+    def __init__(
+        self,
+        data_path: str,
+        tokenizer_name: str = "allenai/scibert_scivocab_uncased",
+        max_length: int = 512
+    ):
+        self.data_path = data_path
+        self.max_length = max_length
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.samples = self._load_data()
+        print(f"[MethodTypeDataset] 加载了 {len(self.samples)} 条样本 from {data_path}")
+
+    def _load_data(self) -> List[Dict]:
+        samples = []
+        with open(self.data_path, "r", encoding="utf-8") as f:
+            for line in f:
+                item = json.loads(line.strip())
+                text = item.get("text", "")
+                label = item.get("method_label", "")
+                if label not in self.LABEL2ID:
+                    continue
+                samples.append({
+                    "text": text,
+                    "label": self.LABEL2ID[label],
+                    "source": item.get("source", "unknown")
+                })
+        return samples
+
+    def __len__(self) -> int:
+        return len(self.samples)
+
+    def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        sample = self.samples[idx]
+        encoding = self.tokenizer(
+            sample["text"], max_length=self.max_length,
+            padding="max_length", truncation=True, return_tensors="pt"
+        )
+        return {
+            "input_ids": encoding["input_ids"].squeeze(0),
+            "attention_mask": encoding["attention_mask"].squeeze(0),
+            "labels": torch.tensor(sample["label"], dtype=torch.long)
+        }
+
+    def get_label_distribution(self) -> Dict[str, int]:
+        dist = {}
+        for sample in self.samples:
+            label_name = self.ID2LABEL[sample["label"]]
+            dist[label_name] = dist.get(label_name, 0) + 1
+        return dist
 
 
 def create_dataloaders(

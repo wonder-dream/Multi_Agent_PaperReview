@@ -66,8 +66,44 @@ def compute_classification_metrics(
     
     # 混淆矩阵
     metrics["confusion_matrix"] = confusion_matrix(labels, predictions, labels=list(range(num_classes))).tolist()
-    
+
     return metrics
+
+
+def compute_multilabel_metrics(
+    predictions: np.ndarray,
+    labels: np.ndarray,
+    class_names: List[str],
+    threshold: float = 0.5
+) -> Dict:
+    """
+    计算多标签分类指标
+
+    Args:
+        predictions: 预测概率, shape (N, num_classes)
+        labels: 多热真实标签, shape (N, num_classes)
+        class_names: 类别名称
+        threshold: 二值化阈值
+
+    Returns:
+        指标字典
+    """
+    preds_binary = (predictions >= threshold).astype(int)
+
+    per_class_f1 = f1_score(labels, preds_binary, average=None, zero_division=0)
+    macro_f1 = float(f1_score(labels, preds_binary, average="macro", zero_division=0))
+    micro_f1 = float(f1_score(labels, preds_binary, average="micro", zero_division=0))
+    weighted_f1 = float(f1_score(labels, preds_binary, average="weighted", zero_division=0))
+    # 子集准确率 (exact match ratio)
+    subset_acc = float(np.mean((preds_binary == labels).all(axis=1)))
+
+    return {
+        "macro_f1": macro_f1,
+        "micro_f1": micro_f1,
+        "weighted_f1": weighted_f1,
+        "subset_accuracy": subset_acc,
+        "per_class_f1": {name: float(score) for name, score in zip(class_names, per_class_f1)},
+    }
 
 
 def format_metrics(metrics: Dict, class_names: List[str] = None) -> str:
@@ -141,7 +177,7 @@ def compute_metrics_from_outputs(outputs_list: List[Dict], task: str = "domain")
         class_names = ["NLP", "CV", "ML", "AI"]
         return compute_classification_metrics(all_preds, all_labels, 4, class_names)
     else:
-        class_names = ["accept", "reject"]
+        class_names = ["Acceptable", "Borderline", "Weak Reject"]
         return compute_classification_metrics(all_preds, all_labels, 2, class_names)
 
 

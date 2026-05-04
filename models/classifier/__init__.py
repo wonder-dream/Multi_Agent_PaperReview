@@ -1,12 +1,17 @@
 # classifier package
-from .scibert_classifier import SciBERTDomainClassifier, SciBERTQualityClassifier, SciBERTMultiTaskClassifier
-from .dataset import DomainDataset, QualityDataset, MultiTaskDataset
+from .scibert_classifier import (
+    SciBERTDomainClassifier, SciBERTQualityClassifier,
+    SciBERTMethodTypeClassifier, SciBERTMultiTaskClassifier
+)
+from .dataset import DomainDataset, QualityDataset, MethodTypeDataset, MultiTaskDataset
 
 __all__ = [
     'SciBERTDomainClassifier',
-    'SciBERTQualityClassifier', 
+    'SciBERTQualityClassifier',
+    'SciBERTMethodTypeClassifier',
     'SciBERTMultiTaskClassifier',
     'DomainDataset',
     'QualityDataset',
+    'MethodTypeDataset',
     'MultiTaskDataset',
 ]

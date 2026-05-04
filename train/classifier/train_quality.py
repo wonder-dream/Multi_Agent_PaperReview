@@ -160,7 +160,7 @@ def train_epoch(
     all_labels = np.array(all_labels)
     
     metrics = compute_classification_metrics(
-        all_preds, all_labels, 2, ["accept", "reject"]
+        all_preds, all_labels, 3, ["Acceptable", "Borderline", "Weak Reject"]
     )
     metrics["loss"] = avg_loss
     
@@ -196,7 +196,7 @@ def evaluate(model: nn.Module, dataloader: DataLoader, device: torch.device) -> 
     all_labels = np.array(all_labels)
     
     metrics = compute_classification_metrics(
-        all_preds, all_labels, 2, ["accept", "reject"]
+        all_preds, all_labels, 3, ["Acceptable", "Borderline", "Weak Reject"]
     )
     metrics["loss"] = avg_loss
     
@@ -259,7 +259,7 @@ def main():
     logger.info("正在初始化模型...")
     model = SciBERTQualityClassifier(
         model_name=args.model_name,
-        num_labels=2,
+        num_labels=3,
         dropout_rate=args.dropout,
         freeze_bert_layers=args.freeze_layers,
         class_weights=class_weights
@@ -371,7 +371,7 @@ def main():
         
         test_metrics = evaluate(model, test_loader, device)
         logger.info("\n测试集结果:")
-        logger.info(format_metrics(test_metrics, ["accept", "reject"]))
+        logger.info(format_metrics(test_metrics, ["Acceptable", "Borderline", "Weak Reject"]))
         
         result_path = os.path.join(args.output_dir, "test_results.json")
         with open(result_path, "w", encoding="utf-8") as f:

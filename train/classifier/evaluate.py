@@ -48,7 +48,7 @@ from models.classifier.scibert_classifier import (
     SciBERTDomainClassifier, SciBERTQualityClassifier, SciBERTMultiTaskClassifier
 )
 from models.classifier.dataset import DomainDataset, QualityDataset, MultiTaskDataset, create_dataloaders
-from utils.metrics import compute_classification_metrics, format_metrics
+from utils.metrics import compute_classification_metrics, compute_multilabel_metrics, format_metrics
 
 
 logging.basicConfig(
@@ -105,15 +105,15 @@ def evaluate_domain(model, dataloader, device):
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
         labels = batch["labels"].to(device)
-        
+
         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-        preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
-        
-        all_preds.extend(preds)
-        all_labels.extend(labels.cpu().numpy())
-    
-    return compute_classification_metrics(
-        np.array(all_preds), np.array(all_labels), 4, ["NLP", "CV", "ML", "AI"]
+        probs = outputs["probs"].detach().cpu().numpy()
+
+        all_preds.extend(probs.tolist())
+        all_labels.extend(labels.cpu().numpy().tolist())
+
+    return compute_multilabel_metrics(
+        np.array(all_preds), np.array(all_labels), ["NLP", "CV", "ML", "AI"]
     )
 
 
@@ -136,7 +136,7 @@ def evaluate_quality(model, dataloader, device):
         all_labels.extend(labels.cpu().numpy())
     
     return compute_classification_metrics(
-        np.array(all_preds), np.array(all_labels), 2, ["accept", "reject"]
+        np.array(all_preds), np.array(all_labels), 2, ["Acceptable", "Borderline", "Weak Reject"]
     )
 
 
@@ -178,7 +178,7 @@ def evaluate_multitask(model, dataloader, device):
         )
     if quality_labels:
         result["quality"] = compute_classification_metrics(
-            np.array(quality_preds), np.array(quality_labels), 2, ["accept", "reject"]
+            np.array(quality_preds), np.array(quality_labels), 2, ["Acceptable", "Borderline", "Weak Reject"]
         )
     
     return result
@@ -271,7 +271,7 @@ def main():
         logger.info("\n" + "=" * 50)
         logger.info("Quality分类评估结果")
         logger.info("=" * 50)
-        logger.info(format_metrics(metrics, ["accept", "reject"]))
+        logger.info(format_metrics(metrics, ["Acceptable", "Borderline", "Weak Reject"]))
         
         result_path = os.path.join(args.output_dir, "quality_results.json")
         with open(result_path, "w", encoding="utf-8") as f:
@@ -280,7 +280,7 @@ def main():
         
         if args.save_confusion_matrix:
             cm_path = os.path.join(args.output_dir, "quality_confusion_matrix.png")
-            save_confusion_matrix(np.array(metrics["confusion_matrix"]), ["accept", "reject"], cm_path)
+            save_confusion_matrix(np.array(metrics["confusion_matrix"]), ["Acceptable", "Borderline", "Weak Reject"], cm_path)
     
     elif args.model_type == "multitask":
         model = SciBERTMultiTaskClassifier(model_name=args.model_name)
@@ -319,7 +319,7 @@ def main():
             logger.info("\n" + "=" * 50)
             logger.info("Quality分类评估结果")
             logger.info("=" * 50)
-            logger.info(format_metrics(metrics["quality"], ["accept", "reject"]))
+            logger.info(format_metrics(metrics["quality"], ["Acceptable", "Borderline", "Weak Reject"]))
             
             result_path = os.path.join(args.output_dir, "quality_results.json")
             with open(result_path, "w", encoding="utf-8") as f:
@@ -329,7 +329,7 @@ def main():
             if args.save_confusion_matrix:
                 cm_path = os.path.join(args.output_dir, "quality_confusion_matrix.png")
                 save_confusion_matrix(np.array(metrics["quality"]["confusion_matrix"]),
-                                     ["accept", "reject"], cm_path)
+                                     ["Acceptable", "Borderline", "Weak Reject"], cm_path)
     
     logger.info(f"\n评估结果已保存到 {args.output_dir}")
 

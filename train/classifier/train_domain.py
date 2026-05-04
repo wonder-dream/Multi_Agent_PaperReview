@@ -48,7 +48,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from models.classifier.scibert_classifier import SciBERTDomainClassifier
 from models.classifier.dataset import DomainDataset, create_dataloaders
-from utils.metrics import compute_classification_metrics, format_metrics
+from utils.metrics import compute_multilabel_metrics, format_metrics
 
 
 logging.basicConfig(
@@ -169,26 +169,24 @@ def train_epoch(
         optimizer.step()
         scheduler.step()
         
-        # 统计
+        # 统计 (多标签: 收集sigmoid概率)
         total_loss += loss.item()
-        preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
-        all_preds.extend(preds)
-        all_labels.extend(labels.cpu().numpy())
-        
-        # 每100步打印进度
+        probs = outputs["probs"].detach().cpu().numpy()
+        all_preds.extend(probs.tolist())
+        all_labels.extend(labels.cpu().numpy().tolist())
+
         if (batch_idx + 1) % 100 == 0:
             logger.info(f"  Batch {batch_idx+1}/{len(dataloader)}, Loss: {loss.item():.4f}")
-    
-    # 计算指标
+
     avg_loss = total_loss / len(dataloader)
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
-    
-    metrics = compute_classification_metrics(
-        all_preds, all_labels, 4, ["NLP", "CV", "ML", "AI"]
+
+    metrics = compute_multilabel_metrics(
+        all_preds, all_labels, ["NLP", "CV", "ML", "AI"]
     )
     metrics["loss"] = avg_loss
-    
+
     return metrics
 
 
@@ -221,19 +219,19 @@ def evaluate(
         )
         
         total_loss += outputs["loss"].item()
-        preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
-        all_preds.extend(preds)
-        all_labels.extend(labels.cpu().numpy())
-    
+        probs = outputs["probs"].detach().cpu().numpy()
+        all_preds.extend(probs.tolist())
+        all_labels.extend(labels.cpu().numpy().tolist())
+
     avg_loss = total_loss / len(dataloader)
     all_preds = np.array(all_preds)
     all_labels = np.array(all_labels)
-    
-    metrics = compute_classification_metrics(
-        all_preds, all_labels, 4, ["NLP", "CV", "ML", "AI"]
+
+    metrics = compute_multilabel_metrics(
+        all_preds, all_labels, ["NLP", "CV", "ML", "AI"]
     )
     metrics["loss"] = avg_loss
-    
+
     return metrics
 
 
@@ -327,13 +325,12 @@ def main():
             device, args.max_grad_norm
         )
         logger.info(f"[Train] Loss: {train_metrics['loss']:.4f}, "
-                    f"Acc: {train_metrics['accuracy']:.4f}, "
+                    f"Micro-F1: {train_metrics['micro_f1']:.4f}, "
                     f"Macro-F1: {train_metrics['macro_f1']:.4f}")
-        
-        # 验证
+
         dev_metrics = evaluate(model, dev_loader, device)
         logger.info(f"[Dev]   Loss: {dev_metrics['loss']:.4f}, "
-                    f"Acc: {dev_metrics['accuracy']:.4f}, "
+                    f"Micro-F1: {dev_metrics['micro_f1']:.4f}, "
                     f"Macro-F1: {dev_metrics['macro_f1']:.4f}")
         
         # 详细指标

@@ -63,12 +63,13 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, PROJECT_ROOT)
 
 from models.classifier.scibert_classifier import (
-    SciBERTDomainClassifier, SciBERTQualityClassifier, SciBERTMultiTaskClassifier
+    SciBERTDomainClassifier, SciBERTQualityClassifier,
+    SciBERTMethodTypeClassifier, SciBERTMultiTaskClassifier
 )
 from models.classifier.dataset import (
-    DomainDataset, QualityDataset, MultiTaskDataset, create_dataloaders
+    DomainDataset, QualityDataset, MethodTypeDataset, MultiTaskDataset, create_dataloaders
 )
-from utils.metrics import compute_classification_metrics, format_metrics
+from utils.metrics import compute_classification_metrics, compute_multilabel_metrics, format_metrics
 from utils.classifier_utils import set_seed, get_device, print_model_info, format_time
 
 
@@ -87,7 +88,7 @@ def parse_args():
     
     # 模式选择
     parser.add_argument("--model_type", type=str, required=True,
-                        choices=["domain", "quality", "multitask"],
+                        choices=["domain", "quality", "method", "multitask"],
                         help="调试的模型类型")
     
     # 数据目录
@@ -295,11 +296,27 @@ def create_debug_dataloaders(args, device):
                                 shuffle=False, num_workers=args.num_workers)
         
         logger.info(f"[Debug MultiTask] 训练: {len(train_dataset)} | 验证: {len(dev_dataset)}")
-        
+
         return train_loader, dev_loader, {
             "domain_class_weights": domain_weights,
             "quality_class_weights": quality_weights
         }
+
+    elif args.model_type == "method":
+        train_path = os.path.join(merge_dir, "merged_train.jsonl")
+        dev_path = os.path.join(merge_dir, "merged_dev.jsonl")
+        if not os.path.exists(train_path):
+            raise FileNotFoundError(f"找不到训练数据: {train_path}")
+        train_dataset = MethodTypeDataset(train_path, max_length=args.max_length)
+        dev_dataset = MethodTypeDataset(dev_path, max_length=args.max_length)
+        train_dataset = sample_dataset(train_dataset, args.sample_size, args.random_sample, args.seed)
+        dev_dataset = sample_dataset(dev_dataset, args.dev_sample_size, args.random_sample, args.seed)
+        train_loader = DataLoader(train_dataset, batch_size=args.batch_size,
+                                  shuffle=True, num_workers=args.num_workers)
+        dev_loader = DataLoader(dev_dataset, batch_size=args.batch_size,
+                               shuffle=False, num_workers=args.num_workers)
+        logger.info(f"[Debug Method] 训练: {len(train_dataset)} | 验证: {len(dev_dataset)}")
+        return train_loader, dev_loader, {}
 
 
 def train_epoch_debug(model, dataloader, optimizer, scheduler, device, max_grad_norm, model_type):
@@ -309,9 +326,9 @@ def train_epoch_debug(model, dataloader, optimizer, scheduler, device, max_grad_
     step_times = []
     
     # 按任务收集预测
-    all_preds = {"domain": [], "quality": []}
-    all_labels = {"domain": [], "quality": []}
-    
+    all_preds = {"domain": [], "quality": [], "method": []}
+    all_labels = {"domain": [], "quality": [], "method": []}
+
     for batch_idx, batch in enumerate(dataloader):
         step_start = time.time()
         
@@ -324,10 +341,10 @@ def train_epoch_debug(model, dataloader, optimizer, scheduler, device, max_grad_
             labels = batch["labels"].to(device)
             outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs["loss"]
-            
-            preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
-            all_preds["domain"].extend(preds)
-            all_labels["domain"].extend(labels.cpu().numpy())
+
+            probs = outputs["probs"].detach().cpu().numpy()
+            all_preds["domain"].extend(probs.tolist())
+            all_labels["domain"].extend(labels.cpu().numpy().tolist())
         
         elif model_type == "quality":
             labels = batch["labels"].to(device)
@@ -337,26 +354,34 @@ def train_epoch_debug(model, dataloader, optimizer, scheduler, device, max_grad_
             preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
             all_preds["quality"].extend(preds)
             all_labels["quality"].extend(labels.cpu().numpy())
-        
+
+        elif model_type == "method":
+            labels = batch["labels"].to(device)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+            loss = outputs["loss"]
+            preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
+            all_preds["method"].extend(preds)
+            all_labels["method"].extend(labels.cpu().numpy())
+
         elif model_type == "multitask":
             domain_labels = batch["domain_labels"].to(device)
             quality_labels = batch["quality_labels"].to(device)
             outputs = model(input_ids=input_ids, attention_mask=attention_mask,
                            domain_labels=domain_labels, quality_labels=quality_labels)
             loss = outputs["loss"]
-            
-            valid_d = domain_labels >= 0
+
+            valid_d = domain_labels.sum(dim=-1) >= 0
             if valid_d.any():
-                dp = torch.argmax(outputs["domain_logits"], dim=-1)
-                all_preds["domain"].extend(dp[valid_d].cpu().numpy())
-                all_labels["domain"].extend(domain_labels[valid_d].cpu().numpy())
-            
+                dprobs = outputs["domain_probs"][valid_d].detach().cpu().numpy()
+                all_preds["domain"].extend(dprobs.tolist())
+                all_labels["domain"].extend(domain_labels[valid_d].cpu().numpy().tolist())
+
             valid_q = quality_labels >= 0
             if valid_q.any():
                 qp = torch.argmax(outputs["quality_logits"], dim=-1)
                 all_preds["quality"].extend(qp[valid_q].cpu().numpy())
                 all_labels["quality"].extend(quality_labels[valid_q].cpu().numpy())
-        
+
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
         optimizer.step()
@@ -379,17 +404,23 @@ def train_epoch_debug(model, dataloader, optimizer, scheduler, device, max_grad_
     result = {"loss": avg_loss}
     
     if all_labels["domain"]:
-        result["domain"] = compute_classification_metrics(
+        result["domain"] = compute_multilabel_metrics(
             np.array(all_preds["domain"]), np.array(all_labels["domain"]),
-            4, ["NLP", "CV", "ML", "AI"]
+            ["NLP", "CV", "ML", "AI"]
         )
     
     if all_labels["quality"]:
         result["quality"] = compute_classification_metrics(
             np.array(all_preds["quality"]), np.array(all_labels["quality"]),
-            2, ["accept", "reject"]
+            3, ["Acceptable", "Borderline", "Weak Reject"]
         )
-    
+
+    if all_labels["method"]:
+        result["method"] = compute_classification_metrics(
+            np.array(all_preds["method"]), np.array(all_labels["method"]),
+            4, ["Empirical", "Theoretical", "Survey", "Benchmark"]
+        )
+
     return result
 
 
@@ -399,9 +430,9 @@ def evaluate_debug(model, dataloader, device, model_type):
     model.eval()
     total_loss = 0.0
     
-    all_preds = {"domain": [], "quality": []}
-    all_labels = {"domain": [], "quality": []}
-    
+    all_preds = {"domain": [], "quality": [], "method": []}
+    all_labels = {"domain": [], "quality": [], "method": []}
+
     for batch in dataloader:
         input_ids = batch["input_ids"].to(device)
         attention_mask = batch["attention_mask"].to(device)
@@ -410,10 +441,10 @@ def evaluate_debug(model, dataloader, device, model_type):
             labels = batch["labels"].to(device)
             outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
             loss = outputs["loss"]
-            
-            preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
-            all_preds["domain"].extend(preds)
-            all_labels["domain"].extend(labels.cpu().numpy())
+
+            probs = outputs["probs"].detach().cpu().numpy()
+            all_preds["domain"].extend(probs.tolist())
+            all_labels["domain"].extend(labels.cpu().numpy().tolist())
         
         elif model_type == "quality":
             labels = batch["labels"].to(device)
@@ -423,7 +454,15 @@ def evaluate_debug(model, dataloader, device, model_type):
             preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
             all_preds["quality"].extend(preds)
             all_labels["quality"].extend(labels.cpu().numpy())
-        
+
+        elif model_type == "method":
+            labels = batch["labels"].to(device)
+            outputs = model(input_ids=input_ids, attention_mask=attention_mask, labels=labels)
+            loss = outputs["loss"]
+            preds = torch.argmax(outputs["logits"], dim=-1).cpu().numpy()
+            all_preds["method"].extend(preds)
+            all_labels["method"].extend(labels.cpu().numpy())
+
         elif model_type == "multitask":
             domain_labels = batch["domain_labels"].to(device)
             quality_labels = batch["quality_labels"].to(device)
@@ -431,11 +470,11 @@ def evaluate_debug(model, dataloader, device, model_type):
                            domain_labels=domain_labels, quality_labels=quality_labels)
             loss = outputs["loss"]
             
-            valid_d = domain_labels >= 0
+            valid_d = domain_labels.sum(dim=-1) >= 0
             if valid_d.any():
-                dp = torch.argmax(outputs["domain_logits"], dim=-1)
-                all_preds["domain"].extend(dp[valid_d].cpu().numpy())
-                all_labels["domain"].extend(domain_labels[valid_d].cpu().numpy())
+                dprobs = outputs["domain_probs"][valid_d].detach().cpu().numpy()
+                all_preds["domain"].extend(dprobs.tolist())
+                all_labels["domain"].extend(domain_labels[valid_d].cpu().numpy().tolist())
             
             valid_q = quality_labels >= 0
             if valid_q.any():
@@ -449,16 +488,22 @@ def evaluate_debug(model, dataloader, device, model_type):
     result = {"loss": avg_loss}
     
     if all_labels["domain"]:
-        result["domain"] = compute_classification_metrics(
+        result["domain"] = compute_multilabel_metrics(
             np.array(all_preds["domain"]), np.array(all_labels["domain"]),
-            4, ["NLP", "CV", "ML", "AI"]
+            ["NLP", "CV", "ML", "AI"]
         )
     if all_labels["quality"]:
         result["quality"] = compute_classification_metrics(
             np.array(all_preds["quality"]), np.array(all_labels["quality"]),
-            2, ["accept", "reject"]
+            3, ["Acceptable", "Borderline", "Weak Reject"]
         )
-    
+
+    if all_labels["method"]:
+        result["method"] = compute_classification_metrics(
+            np.array(all_preds["method"]), np.array(all_labels["method"]),
+            4, ["Empirical", "Theoretical", "Survey", "Benchmark"]
+        )
+
     return result
 
 
@@ -521,6 +566,12 @@ def main():
             dropout_rate=args.dropout,
             class_weights=class_weights
         )
+    elif args.model_type == "method":
+        model = SciBERTMethodTypeClassifier(
+            model_name=args.model_name,
+            freeze_bert_layers=args.freeze_layers,
+            dropout_rate=args.dropout
+        )
     elif args.model_type == "multitask":
         model = SciBERTMultiTaskClassifier(
             model_name=args.model_name,
@@ -571,7 +622,7 @@ def main():
         logger.info(f"  [Dev]   Loss: {dev_metrics['loss']:.4f}")
         
         if "domain" in dev_metrics:
-            logger.info(f"  [Dev]   Domain Acc: {dev_metrics['domain']['accuracy']:.4f} | "
+            logger.info(f"  [Dev]   Domain Micro-F1: {dev_metrics['domain']['micro_f1']:.4f} | "
                         f"Macro-F1: {dev_metrics['domain']['macro_f1']:.4f}")
             for name, score in dev_metrics["domain"]["per_class_f1"].items():
                 logger.info(f"          {name}: F1={score:.4f}")
@@ -581,7 +632,13 @@ def main():
                         f"Macro-F1: {dev_metrics['quality']['macro_f1']:.4f}")
             for name, score in dev_metrics["quality"]["per_class_f1"].items():
                 logger.info(f"          {name}: F1={score:.4f}")
-        
+
+        if "method" in dev_metrics:
+            logger.info(f"  [Dev]   Method Acc: {dev_metrics['method']['accuracy']:.4f} | "
+                        f"Macro-F1: {dev_metrics['method']['macro_f1']:.4f}")
+            for name, score in dev_metrics["method"]["per_class_f1"].items():
+                logger.info(f"          {name}: F1={score:.4f}")
+
         print_gpu_memory(device, f"Epoch {epoch+1} 结束")
     
     total_time = time.time() - start_time
@@ -620,29 +677,39 @@ def main():
                        attention_mask=encoding["attention_mask"].to(device))
     
     if args.model_type == "domain":
-        probs = torch.softmax(outputs["logits"], dim=-1)[0].cpu().numpy()
-        pred_idx = probs.argmax()
+        probs = torch.sigmoid(outputs["logits"])[0].cpu().numpy()
         labels = ["NLP", "CV", "ML", "AI"]
+        active = [l for l, p in zip(labels, probs) if p >= 0.5] or [labels[probs.argmax()]]
         logger.info(f"测试文本: '{test_text[:80]}...'")
-        logger.info(f"预测领域: {labels[pred_idx]} (置信度: {probs[pred_idx]:.4f})")
+        logger.info(f"预测领域: {active} (阈值=0.5)")
         for l, p in zip(labels, probs):
             logger.info(f"  {l}: {p:.4f}")
     
     elif args.model_type == "quality":
         probs = torch.softmax(outputs["logits"], dim=-1)[0].cpu().numpy()
         pred_idx = probs.argmax()
-        labels = ["accept", "reject"]
+        labels = ["Acceptable", "Borderline", "Weak Reject"]
         logger.info(f"测试文本: '{test_text[:80]}...'")
         logger.info(f"预测质量: {labels[pred_idx]} (置信度: {probs[pred_idx]:.4f})")
-    
+
+    elif args.model_type == "method":
+        probs = torch.softmax(outputs["logits"], dim=-1)[0].cpu().numpy()
+        pred_idx = probs.argmax()
+        labels = ["Empirical", "Theoretical", "Survey", "Benchmark"]
+        logger.info(f"测试文本: '{test_text[:80]}...'")
+        logger.info(f"预测方法类型: {labels[pred_idx]} (置信度: {probs[pred_idx]:.4f})")
+        for l, p in zip(labels, probs):
+            logger.info(f"  {l}: {p:.4f}")
+
     elif args.model_type == "multitask":
-        d_probs = torch.softmax(outputs["domain_logits"], dim=-1)[0].cpu().numpy()
+        d_probs = torch.sigmoid(outputs["domain_logits"])[0].cpu().numpy()
         q_probs = torch.softmax(outputs["quality_logits"], dim=-1)[0].cpu().numpy()
         d_labels = ["NLP", "CV", "ML", "AI"]
-        q_labels = ["accept", "reject"]
-        
+        q_labels = ["Acceptable", "Borderline", "Weak Reject"]
+
+        d_active = [l for l, p in zip(d_labels, d_probs) if p >= 0.5] or [d_labels[d_probs.argmax()]]
         logger.info(f"测试文本: '{test_text[:80]}...'")
-        logger.info(f"预测领域: {d_labels[d_probs.argmax()]} (置信度: {d_probs.max():.4f})")
+        logger.info(f"预测领域: {d_active} (阈值=0.5)")
         logger.info(f"预测质量: {q_labels[q_probs.argmax()]} (置信度: {q_probs.max():.4f})")
     
     logger.info("\n一切正常! 可以部署到 5090 进行正式训练。")

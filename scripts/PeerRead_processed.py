@@ -178,22 +178,17 @@ def build_classification():
                 decision = p.get("accepted", p.get("decision", None))
                 label_quality = None
                 if isinstance(decision, bool):
-                    label_quality = "accept" if decision else "reject"
+                    label_quality = "Acceptable" if decision else "Weak Reject"
                 elif isinstance(decision, str):
                     d = decision.lower()
                     if d in ["accept", "accepted", "true", "yes", "probably accept"]:
-                        label_quality = "accept"
-                    elif d in [
-                        "reject",
-                        "rejected",
-                        "false",
-                        "no",
-                        "probably reject",
-                        "borderline",
-                    ]:
-                        label_quality = "reject"
+                        label_quality = "Acceptable"
+                    elif d in ["borderline"]:
+                        label_quality = "Borderline"
+                    elif d in ["reject", "rejected", "false", "no", "probably reject"]:
+                        label_quality = "Weak Reject"
                 elif isinstance(decision, int):
-                    label_quality = "accept" if decision == 1 else "reject"
+                    label_quality = "Acceptable" if decision == 1 else "Weak Reject"
 
                 if label_quality:
                     target_list.append(

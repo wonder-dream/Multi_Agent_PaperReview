@@ -90,9 +90,11 @@ def process_arxiv():
                 print(f"  [PROGRESS] 已读取 {total} 篇...")
 
             r = json.loads(line)
-            primary = r.get("primary_category", "")
-            domain = CAT2DOMAIN.get(primary, "OTHER")
-            if domain == "OTHER":
+            categories = r.get("categories", [])
+            domains = sorted(set(
+                CAT2DOMAIN[cat] for cat in categories if cat in CAT2DOMAIN
+            ))
+            if not domains:
                 continue
 
             year = r.get("year", 2000)
@@ -112,14 +114,15 @@ def process_arxiv():
 
             item = {
                 "text": text,
-                "label": domain,
+                "label": ",".join(domains),  # 多标签
                 "task": "domain",
                 "source": "arxiv",
                 "arxiv_id": r.get("id", ""),
                 "year": year,
             }
 
-            domain_split_groups[domain][split].append(item)
+            for d in domains:
+                domain_split_groups[d][split].append(item)
 
     print(f"\n  [LOAD] arXiv 总计读取: {total} 篇")
 

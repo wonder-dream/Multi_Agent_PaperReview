@@ -45,7 +45,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from models.classifier.scibert_classifier import SciBERTMultiTaskClassifier
 from models.classifier.dataset import MultiTaskDataset, create_dataloaders
-from utils.metrics import compute_classification_metrics, format_metrics
+from utils.metrics import compute_classification_metrics, compute_multilabel_metrics, format_metrics
 
 
 logging.basicConfig(
@@ -169,12 +169,11 @@ def train_epoch(
         
         if "domain_loss" in outputs:
             total_domain_loss += outputs["domain_loss"].item()
-            # 只统计有效的domain标签 (非-1)
-            valid_domain = domain_labels_batch >= 0
+            valid_domain = domain_labels_batch.sum(dim=-1) >= 0
             if valid_domain.any():
-                dpreds = torch.argmax(outputs["domain_logits"], dim=-1)
-                domain_preds.extend(dpreds[valid_domain].cpu().numpy())
-                domain_labels.extend(domain_labels_batch[valid_domain].cpu().numpy())
+                dprobs = outputs["domain_probs"][valid_domain].detach().cpu().numpy()
+                domain_preds.extend(dprobs.tolist())
+                domain_labels.extend(domain_labels_batch[valid_domain].cpu().numpy().tolist())
         
         if "quality_loss" in outputs:
             total_quality_loss += outputs["quality_loss"].item()
@@ -192,14 +191,14 @@ def train_epoch(
     result = {"loss": total_loss / len(dataloader)}
     
     if domain_labels:
-        result["domain"] = compute_classification_metrics(
-            np.array(domain_preds), np.array(domain_labels), 4, ["NLP", "CV", "ML", "AI"]
+        result["domain"] = compute_multilabel_metrics(
+            np.array(domain_preds), np.array(domain_labels), ["NLP", "CV", "ML", "AI"]
         )
         result["domain"]["loss"] = total_domain_loss / len(dataloader)
     
     if quality_labels:
         result["quality"] = compute_classification_metrics(
-            np.array(quality_preds), np.array(quality_labels), 2, ["accept", "reject"]
+            np.array(quality_preds), np.array(quality_labels), 3, ["Acceptable", "Borderline", "Weak Reject"]
         )
         result["quality"]["loss"] = total_quality_loss / len(dataloader)
     
@@ -236,11 +235,11 @@ def evaluate(model: nn.Module, dataloader: DataLoader, device: torch.device) -> 
         
         if "domain_loss" in outputs:
             total_domain_loss += outputs["domain_loss"].item()
-            valid_domain = domain_labels_batch >= 0
+            valid_domain = domain_labels_batch.sum(dim=-1) >= 0
             if valid_domain.any():
-                dpreds = torch.argmax(outputs["domain_logits"], dim=-1)
-                domain_preds.extend(dpreds[valid_domain].cpu().numpy())
-                domain_labels_list.extend(domain_labels_batch[valid_domain].cpu().numpy())
+                dprobs = outputs["domain_probs"][valid_domain].detach().cpu().numpy()
+                domain_preds.extend(dprobs.tolist())
+                domain_labels_list.extend(domain_labels_batch[valid_domain].cpu().numpy().tolist())
         
         if "quality_loss" in outputs:
             total_quality_loss += outputs["quality_loss"].item()
@@ -253,14 +252,14 @@ def evaluate(model: nn.Module, dataloader: DataLoader, device: torch.device) -> 
     result = {"loss": total_loss / len(dataloader)}
     
     if domain_labels_list:
-        result["domain"] = compute_classification_metrics(
-            np.array(domain_preds), np.array(domain_labels_list), 4, ["NLP", "CV", "ML", "AI"]
+        result["domain"] = compute_multilabel_metrics(
+            np.array(domain_preds), np.array(domain_labels_list), ["NLP", "CV", "ML", "AI"]
         )
         result["domain"]["loss"] = total_domain_loss / len(dataloader)
     
     if quality_labels_list:
         result["quality"] = compute_classification_metrics(
-            np.array(quality_preds), np.array(quality_labels_list), 2, ["accept", "reject"]
+            np.array(quality_preds), np.array(quality_labels_list), 3, ["Acceptable", "Borderline", "Weak Reject"]
         )
         result["quality"]["loss"] = total_quality_loss / len(dataloader)
     
@@ -323,7 +322,7 @@ def main():
     model = SciBERTMultiTaskClassifier(
         model_name=args.model_name,
         num_domain_labels=4,
-        num_quality_labels=2,
+        num_quality_labels=3,
         dropout_rate=args.dropout,
         freeze_bert_layers=args.freeze_layers,
         domain_class_weights=domain_class_weights,
@@ -363,7 +362,7 @@ def main():
         
         logger.info(f"[Train] Total Loss: {train_metrics['loss']:.4f}")
         if "domain" in train_metrics:
-            logger.info(f"[Train] Domain - Acc: {train_metrics['domain']['accuracy']:.4f}, "
+            logger.info(f"[Train] Domain - Micro-F1: {train_metrics['domain']['micro_f1']:.4f}, "
                         f"Macro-F1: {train_metrics['domain']['macro_f1']:.4f}")
         if "quality" in train_metrics:
             logger.info(f"[Train] Quality - Acc: {train_metrics['quality']['accuracy']:.4f}, "
@@ -373,7 +372,7 @@ def main():
         
         logger.info(f"\n[Dev] Total Loss: {dev_metrics['loss']:.4f}")
         if "domain" in dev_metrics:
-            logger.info(f"[Dev] Domain - Acc: {dev_metrics['domain']['accuracy']:.4f}, "
+            logger.info(f"[Dev] Domain - Micro-F1: {dev_metrics['domain']['micro_f1']:.4f}, "
                         f"Macro-F1: {dev_metrics['domain']['macro_f1']:.4f}")
             for name, score in dev_metrics["domain"]["per_class_f1"].items():
                 logger.info(f"  Domain {name}: F1={score:.4f}")

@@ -29,6 +29,23 @@ CAT2DOMAIN = {
 
 
 # ========== 工具函数 ==========
+def infer_method_type(title: str, abstract: str) -> str:
+    """基于关键词推断方法类型"""
+    text = (title + " " + abstract).lower()
+    # 优先检测 Survey (综述/调查)
+    if any(k in text for k in ["survey", "review of", "overview", "state of the art",
+                                 "literature review", "a survey", "comprehensive review"]):
+        return "Survey"
+    if any(k in text for k in ["theorem", "proof", "theoretical", "theory",
+                                 "convergence", "bound", "guarantee", "proposition",
+                                 "lemma", "corollary"]):
+        return "Theoretical"
+    if any(k in text for k in ["benchmark", "benchmarking", "evaluation protocol",
+                                 "standardized evaluation", "comparison of"]):
+        return "Benchmark"
+    return "Empirical"
+
+
 def ensure_dir(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
@@ -71,16 +88,20 @@ def main():
         if len(text) < 20:
             continue
 
-        primary = r.get("primary_category", "")
-        domain = CAT2DOMAIN.get(primary, "")
-        if not domain:
+        categories = r.get("categories", [])
+        # 多标签: 所有匹配的类别 → 逗号分隔的领域标签
+        domains = sorted(set(
+            CAT2DOMAIN[cat] for cat in categories if cat in CAT2DOMAIN
+        ))
+        if not domains:
             continue
 
         samples.append(
             {
                 "text": text,
-                "label": domain,
+                "label": ",".join(domains),
                 "task": "domain",
+                "method_label": infer_method_type(title, abstract),
                 "source": "arxiv",
                 "arxiv_id": r.get("id", ""),
                 "year": r.get("year", 0),
