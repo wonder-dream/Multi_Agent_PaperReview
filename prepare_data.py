@@ -76,7 +76,7 @@ def prepare_scierc():
     from urllib.request import urlretrieve
 
     print("Downloading SciERC from http://nlp.cs.washington.edu/sciIE/ ...")
-    url = "http://nlp.cs.washington.edu/sciIE/data/sciERC_processed.tar.gz"
+    url = "http://nlp.cs.washington.edu/sciIE/data/sciERC_raw.tar.gz"
     tar_path = os.path.join(DATA_DIR, "scierc.tar.gz")
 
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -96,36 +96,67 @@ def prepare_scierc():
     with tarfile.open(tar_path, "r:gz") as tar:
         tar.extractall(extract_dir)
 
-    # Find JSON files
-    json_files = _glob.glob(os.path.join(extract_dir, "**", "*.json"), recursive=True)
-    print(f"  Found {len(json_files)} JSON files")
+    # Parse BRAT format (.ann + .txt files), one sample per abstract
+    txt_files = _glob.glob(os.path.join(extract_dir, "**", "*.txt"), recursive=True)
+    print(f"  Found {len(txt_files)} text files in BRAT format")
 
     all_samples = []
-    for fpath in json_files:
-        with open(fpath, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    for txt_path in txt_files:
+        ann_path = txt_path.replace(".txt", ".ann")
+        if not os.path.exists(ann_path):
+            continue
 
-        # SciERC format: {doc_id: {sentences: [[tokens]], ner: [[start, end, type]], relations: [...]}}
-        if isinstance(data, dict):
-            for doc_id, doc in data.items():
-                if not isinstance(doc, dict):
+        with open(txt_path, "r", encoding="utf-8") as f:
+            raw_text = f.read().strip()
+
+        # Build token-to-character mapping
+        tokens = raw_text.split()
+        token_spans = []  # (start_char, end_char) per token
+        pos = 0
+        for tok in tokens:
+            idx = raw_text.find(tok, pos)
+            if idx == -1:
+                token_spans.append((pos, pos + len(tok)))
+                pos = pos + len(tok) + 1
+            else:
+                token_spans.append((idx, idx + len(tok)))
+                pos = idx + len(tok)
+
+        # Parse .ann entities
+        entities = []
+        with open(ann_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or not line.startswith("T"):
                     continue
-                sentences = doc.get("sentences", [])
-                entities = doc.get("ner", [])
-                for sent in sentences:
-                    tokens = sent if isinstance(sent, list) else sent.get("tokens", [])
-                    if not tokens:
-                        continue
-                    sent_entities = []
-                    for ent in entities:
-                        if len(ent) >= 3:
-                            sent_entities.append({
-                                "text": " ".join(tokens[ent[0]:ent[1]]) if ent[0] < len(tokens) else "",
-                                "type": str(ent[2]),
-                                "start": int(ent[0]),
-                                "end": min(int(ent[1]), len(tokens)),
-                            })
-                    all_samples.append({"tokens": tokens, "entities": sent_entities})
+                parts = line.split("\t")
+                if len(parts) < 3:
+                    continue
+                tag_parts = parts[1].split()
+                if len(tag_parts) < 3:
+                    continue
+                etype = tag_parts[0]
+                c_start = int(tag_parts[1])
+                c_end = int(tag_parts[2])
+                # Map character offsets to token indices
+                tok_start = None
+                tok_end = None
+                for i, (ts, te) in enumerate(token_spans):
+                    if tok_start is None and ts <= c_start < te:
+                        tok_start = i
+                    if ts <= c_end <= te:
+                        tok_end = i + 1
+                        break
+                if tok_start is not None and tok_end is not None:
+                    entities.append({
+                        "text": parts[2],
+                        "type": etype,
+                        "start": tok_start,
+                        "end": tok_end,
+                    })
+
+        if entities:
+            all_samples.append({"tokens": tokens, "entities": entities})
 
     # Clean up temp files
     os.remove(tar_path)
