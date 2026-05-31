@@ -29,6 +29,16 @@ pip install uv
 uv sync
 ```
 
+**国内镜像加速**（如果 `uv sync` 下载很慢）：
+
+```bash
+# PyPI 清华镜像
+uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+# HuggingFace 镜像（下载模型时用）
+export HF_ENDPOINT=https://hf-mirror.com
+```
+
 ### 2. 设置 API Key
 
 ```bash
