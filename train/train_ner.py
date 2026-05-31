@@ -5,7 +5,7 @@ import os
 
 import torch
 from torch.utils.data import DataLoader, random_split
-from torchcrf import CRF
+from tqdm import tqdm
 
 from src.ner.model import BiLSTMCRFNER
 from src.ner.dataset import SciERCDataset
@@ -31,14 +31,17 @@ def main():
 
     train_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=True)
     val_loader = DataLoader(val_ds, batch_size=args.batch_size)
+    print(f"Train: {len(train_ds)} | Val: {len(val_ds)} | Device: {args.device}")
 
+    print("Loading SciBERT...")
     model = BiLSTMCRFNER(pretrained=True).to(args.device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)
 
     for epoch in range(args.epochs):
         model.train()
         total_loss = 0
-        for batch in train_loader:
+        pbar = tqdm(train_loader, desc=f"Epoch {epoch+1}/{args.epochs}", unit="batch")
+        for batch in pbar:
             input_ids = batch["input_ids"].to(args.device)
             attention_mask = batch["attention_mask"].to(args.device)
             labels = batch["labels"].to(args.device)
@@ -50,8 +53,10 @@ def main():
             loss.backward()
             optimizer.step()
             total_loss += loss.item()
+            pbar.set_postfix(loss=f"{loss.item():.4f}")
 
-        print(f"Epoch {epoch+1}/{args.epochs}  loss={total_loss/len(train_loader):.4f}")
+        avg_loss = total_loss / len(train_loader)
+        print(f"  Epoch {epoch+1} avg loss: {avg_loss:.4f}")
 
     os.makedirs(args.output, exist_ok=True)
     path = os.path.join(args.output, "best_model.pt")
