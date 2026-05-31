@@ -2,7 +2,7 @@
   "paper": "pdfs/Deep-Residual.pdf",
   "text_length": 59435,
   "pipeline_a_llm": {
-    "time_s": 31.4,
+    "time_s": 17.3,
     "classification": {
       "domains": [
         "Computer Vision",
@@ -38,10 +38,6 @@
           "type": "DATASET"
         },
         {
-          "text": "PASCAL VOC",
-          "type": "DATASET"
-        },
-        {
           "text": "top-5 error",
           "type": "METRIC"
         },
@@ -54,6 +50,98 @@
           "type": "METRIC"
         },
         {
+          "text": "ResNet-34",
+          "type": "MODEL"
+        },
+        {
+          "text": "ResNet-50",
+          "type": "MODEL"
+        },
+        {
+          "text": "ResNet-101",
+          "type": "MODEL"
+        },
+        {
+          "text": "ResNet-152",
+          "type": "MODEL"
+        },
+        {
+          "text": "ResNet-18",
+          "type": "MODEL"
+        },
+        {
+          "text": "ResNet-110",
+          "type": "MODEL"
+        },
+        {
+          "text": "ResNet-1202",
+          "type": "MODEL"
+        },
+        {
+          "text": "VGG-16",
+          "type": "MODEL"
+        },
+        {
+          "text": "VGG-19",
+          "type": "MODEL"
+        },
+        {
+          "text": "GoogLeNet",
+          "type": "MODEL"
+        },
+        {
+          "text": "PReLU-net",
+          "type": "MODEL"
+        },
+        {
+          "text": "BN-inception",
+          "type": "MODEL"
+        },
+        {
+          "text": "Highway",
+          "type": "MODEL"
+        },
+        {
+          "text": "FitNet",
+          "type": "MODEL"
+        },
+        {
+          "text": "Maxout",
+          "type": "MODEL"
+        },
+        {
+          "text": "NIN",
+          "type": "MODEL"
+        },
+        {
+          "text": "DSN",
+          "type": "MODEL"
+        },
+        {
+          "text": "Faster R-CNN",
+          "type": "METHOD"
+        },
+        {
+          "text": "RPN",
+          "type": "METHOD"
+        },
+        {
+          "text": "Fast R-CNN",
+          "type": "METHOD"
+        },
+        {
+          "text": "R-CNN",
+          "type": "METHOD"
+        },
+        {
+          "text": "SGD",
+          "type": "METHOD"
+        },
+        {
+          "text": "batch normalization",
+          "type": "METHOD"
+        },
+        {
           "text": "residual learning",
           "type": "METHOD"
         },
@@ -62,23 +150,67 @@
           "type": "METHOD"
         },
         {
-          "text": "Faster R-CNN",
+          "text": "identity mapping",
           "type": "METHOD"
         },
         {
-          "text": "image classification",
+          "text": "projection shortcut",
+          "type": "METHOD"
+        },
+        {
+          "text": "bottleneck",
+          "type": "METHOD"
+        },
+        {
+          "text": "box refinement",
+          "type": "METHOD"
+        },
+        {
+          "text": "global context",
+          "type": "METHOD"
+        },
+        {
+          "text": "multi-scale testing",
+          "type": "METHOD"
+        },
+        {
+          "text": "PASCAL VOC",
+          "type": "DATASET"
+        },
+        {
+          "text": "ImageNet detection",
           "type": "TASK"
         },
         {
-          "text": "object detection",
+          "text": "ImageNet localization",
           "type": "TASK"
         },
         {
-          "text": "image segmentation",
+          "text": "COCO detection",
           "type": "TASK"
         },
         {
-          "text": "image localization",
+          "text": "COCO segmentation",
+          "type": "TASK"
+        },
+        {
+          "text": "ILSVRC 2015 classification",
+          "type": "TASK"
+        },
+        {
+          "text": "ILSVRC 2015 detection",
+          "type": "TASK"
+        },
+        {
+          "text": "ILSVRC 2015 localization",
+          "type": "TASK"
+        },
+        {
+          "text": "COCO 2015 detection",
+          "type": "TASK"
+        },
+        {
+          "text": "COCO 2015 segmentation",
           "type": "TASK"
         }
       ],
@@ -100,11 +232,6 @@
         },
         {
           "head": "ResNet",
-          "relation": "EVALUATED_ON",
-          "tail": "PASCAL VOC"
-        },
-        {
-          "head": "ResNet",
           "relation": "ACHIEVES",
           "tail": "top-5 error"
         },
@@ -119,840 +246,277 @@
           "tail": "mAP"
         },
         {
-          "head": "ResNet",
-          "relation": "USES",
-          "tail": "residual learning"
+          "head": "ResNet-152",
+          "relation": "ACHIEVES",
+          "tail": "3.57% error"
         },
         {
-          "head": "ResNet",
-          "relation": "USES",
-          "tail": "shortcut connections"
+          "head": "ResNet-152",
+          "relation": "EVALUATED_ON",
+          "tail": "ImageNet"
+        },
+        {
+          "head": "ResNet-101",
+          "relation": "EVALUATED_ON",
+          "tail": "COCO"
+        },
+        {
+          "head": "ResNet-101",
+          "relation": "ACHIEVES",
+          "tail": "mAP"
+        },
+        {
+          "head": "ResNet-34",
+          "relation": "EVALUATED_ON",
+          "tail": "ImageNet"
+        },
+        {
+          "head": "ResNet-34",
+          "relation": "ACHIEVES",
+          "tail": "top-1 error"
+        },
+        {
+          "head": "ResNet-50",
+          "relation": "EVALUATED_ON",
+          "tail": "ImageNet"
+        },
+        {
+          "head": "ResNet-110",
+          "relation": "EVALUATED_ON",
+          "tail": "CIFAR-10"
+        },
+        {
+          "head": "ResNet-1202",
+          "relation": "EVALUATED_ON",
+          "tail": "CIFAR-10"
+        },
+        {
+          "head": "VGG-16",
+          "relation": "EVALUATED_ON",
+          "tail": "ImageNet"
+        },
+        {
+          "head": "VGG-16",
+          "relation": "EVALUATED_ON",
+          "tail": "PASCAL VOC"
+        },
+        {
+          "head": "VGG-16",
+          "relation": "EVALUATED_ON",
+          "tail": "COCO"
         },
         {
           "head": "Faster R-CNN",
           "relation": "USES",
-          "tail": "ResNet"
+          "tail": "ResNet-101"
+        },
+        {
+          "head": "Faster R-CNN",
+          "relation": "USES",
+          "tail": "VGG-16"
+        },
+        {
+          "head": "Faster R-CNN",
+          "relation": "SOLVES",
+          "tail": "COCO detection"
+        },
+        {
+          "head": "Faster R-CNN",
+          "relation": "SOLVES",
+          "tail": "ImageNet detection"
+        },
+        {
+          "head": "Faster R-CNN",
+          "relation": "SOLVES",
+          "tail": "ImageNet localization"
+        },
+        {
+          "head": "RPN",
+          "relation": "USES",
+          "tail": "ResNet-101"
+        },
+        {
+          "head": "RPN",
+          "relation": "SOLVES",
+          "tail": "ImageNet localization"
+        },
+        {
+          "head": "residual learning",
+          "relation": "USES",
+          "tail": "shortcut connections"
+        },
+        {
+          "head": "residual learning",
+          "relation": "USES",
+          "tail": "identity mapping"
+        },
+        {
+          "head": "ResNet",
+          "relation": "USES",
+          "tail": "batch normalization"
+        },
+        {
+          "head": "ResNet",
+          "relation": "USES",
+          "tail": "SGD"
+        },
+        {
+          "head": "ResNet",
+          "relation": "USES",
+          "tail": "bottleneck"
+        },
+        {
+          "head": "ResNet-34",
+          "relation": "USES",
+          "tail": "projection shortcut"
+        },
+        {
+          "head": "ResNet-50",
+          "relation": "USES",
+          "tail": "bottleneck"
+        },
+        {
+          "head": "ResNet-101",
+          "relation": "USES",
+          "tail": "bottleneck"
+        },
+        {
+          "head": "ResNet-152",
+          "relation": "USES",
+          "tail": "bottleneck"
+        },
+        {
+          "head": "ResNet-101",
+          "relation": "USES",
+          "tail": "box refinement"
+        },
+        {
+          "head": "ResNet-101",
+          "relation": "USES",
+          "tail": "global context"
+        },
+        {
+          "head": "ResNet-101",
+          "relation": "USES",
+          "tail": "multi-scale testing"
         },
         {
           "head": "ResNet",
           "relation": "SOLVES",
-          "tail": "image classification"
+          "tail": "ILSVRC 2015 classification"
         },
         {
           "head": "ResNet",
           "relation": "SOLVES",
-          "tail": "object detection"
+          "tail": "ImageNet detection"
         },
         {
           "head": "ResNet",
           "relation": "SOLVES",
-          "tail": "image segmentation"
+          "tail": "ImageNet localization"
         },
         {
           "head": "ResNet",
           "relation": "SOLVES",
-          "tail": "image localization"
+          "tail": "COCO detection"
+        },
+        {
+          "head": "ResNet",
+          "relation": "SOLVES",
+          "tail": "COCO segmentation"
         }
       ]
     },
     "summary": {
-      "background": "Deeper neural networks are more difficult to train due to the degradation problem, where accuracy saturates and then degrades rapidly with increasing depth, even when not caused by overfitting or vanishing gradients. This paper addresses this optimization difficulty by introducing a deep residual learning framework.",
+      "background": "Deeper neural networks are more difficult to train, and a degradation problem has been observed where accuracy saturates and then degrades rapidly with increasing depth, which is not caused by overfitting. This paper addresses this degradation problem by introducing a deep residual learning framework.",
       "contributions": [
-        "Proposes residual learning framework that reformulates layers as learning residual functions with reference to layer inputs, making deeper networks easier to optimize.",
-        "Demonstrates that residual networks (ResNets) can gain accuracy from considerably increased depth, achieving state-of-the-art results on ImageNet with up to 152 layers.",
+        "Proposes a residual learning framework that reformulates layers as learning residual functions with reference to layer inputs, making it easier to optimize deeper networks.",
+        "Demonstrates that residual networks (ResNets) can gain accuracy from considerably increased depth, achieving state-of-the-art results on ImageNet with depths up to 152 layers.",
         "Wins 1st place in ILSVRC 2015 classification, detection, localization, COCO detection, and COCO segmentation competitions.",
-        "Provides comprehensive empirical evidence on ImageNet, CIFAR-10, and object detection tasks showing residual networks overcome the degradation problem."
+        "Provides comprehensive empirical evidence on ImageNet and CIFAR-10 showing that ResNets overcome the degradation problem and are easier to optimize than plain networks."
       ],
-      "methodology": "The core method introduces shortcut connections that perform identity mapping, adding the input of a stack of layers to its output, effectively learning residual functions F(x) = H(x) - x instead of the original mapping H(x). These identity shortcuts add no extra parameters or computational complexity and can be trained end-to-end with SGD and backpropagation.",
-      "experiments": "Experiments are conducted on ImageNet 2012 classification (1.28M training images, 50k validation, 100k test), CIFAR-10 (50k training, 10k testing), and object detection on PASCAL VOC and MS COCO using Faster R-CNN. Baselines include plain networks of varying depths, VGG nets, GoogLeNet, and Highway networks.",
-      "results": "ResNets with 152 layers achieve 3.57% top-5 error on ImageNet test set, outperforming all previous ensembles. On CIFAR-10, a 110-layer ResNet achieves 6.43% error, and a 1202-layer network trains successfully with <0.1% training error. On COCO detection, ResNet-101 provides a 28% relative improvement in mAP@[.5,.95] over VGG-16.",
-      "limitations": "The 1202-layer ResNet on CIFAR-10 shows higher test error (7.93%) than the 110-layer network (6.43%) due to overfitting, as the model is unnecessarily large for the small dataset. The paper notes that combining with stronger regularization (e.g., maxout or dropout) may improve results but was not explored. Additionally, the optimization difficulties of deep plain nets are not fully explained and left for future study."
+      "methodology": "The core method introduces shortcut connections that perform identity mapping, adding the input of a stack of layers to their output, effectively learning residual functions F(x) = H(x) - x instead of the original mapping H(x). These identity shortcuts add no extra parameters or computational complexity, and the entire network can be trained end-to-end with SGD and backpropagation.",
+      "experiments": "Experiments are conducted on ImageNet 2012 classification (1.28M training images, 50k validation, 100k test) and CIFAR-10 (50k training, 10k testing). Baselines include plain networks of varying depths, VGG nets, GoogLeNet, and Highway networks. For ImageNet, ResNets with 18, 34, 50, 101, and 152 layers are evaluated; for CIFAR-10, depths of 20, 32, 44, 56, 110, and 1202 layers are tested.",
+      "results": "On ImageNet, the 152-layer ResNet achieves a single-model top-5 error of 4.49% and an ensemble top-5 error of 3.57%, outperforming all previous methods. On CIFAR-10, the 110-layer ResNet achieves 6.43% test error, and the 1202-layer network shows no optimization difficulty but slightly higher test error due to overfitting. ResNets consistently outperform plain networks of the same depth, demonstrating that residual learning effectively addresses the degradation problem.",
+      "limitations": "The 1202-layer ResNet on CIFAR-10 shows worse test error than the 110-layer network, attributed to overfitting due to the model's large size relative to the dataset. The paper notes that stronger regularization (e.g., maxout or dropout) could improve results but was not used to focus on optimization difficulties. Additionally, the optimization difficulty of deep plain nets is not fully explained and is left for future study."
     },
     "checklist": [
       {
         "category": "数据集多样性",
         "status": "ok",
-        "detail": "The paper uses four datasets (ImageNet, CIFAR-10, PASCAL VOC, MS COCO), exceeding the minimum of three for good diversity."
+        "detail": "The paper uses three major datasets (ImageNet, CIFAR-10, COCO) and also mentions PASCAL VOC, which is sufficient for demonstrating generalization."
       },
       {
         "category": "Baseline对比",
         "status": "ok",
-        "detail": "The paper compares ResNets against plain networks, VGG nets, GoogLeNet, and Highway networks, providing comprehensive baselines."
+        "detail": "The paper compares ResNets against multiple baselines including plain networks, VGG nets, GoogLeNet, Highway networks, and others across different tasks."
       },
       {
         "category": "消融实验",
         "status": "ok",
-        "detail": "Ablation studies are performed on shortcut options (A, B, C) and network depths (18, 34, 50, 101, 152 layers) to isolate the effect of residual learning."
+        "detail": "Ablation studies are conducted on identity vs. projection shortcuts (options A, B, C) and on the effect of depth (18, 34, 50, 101, 152 layers) on ImageNet."
       },
       {
         "category": "代码开源",
         "status": "missing",
-        "detail": "No code or data links are provided in the paper, which limits reproducibility."
+        "detail": "No code or data links are provided in the paper; only a mention of using Caffe library without releasing the implementation."
       },
       {
         "category": "伦理声明",
         "status": "partial",
-        "detail": "The paper discusses limitations (overfitting in 1202-layer ResNet) but does not include an explicit ethics review or broader impact statement."
+        "detail": "The paper discusses limitations (overfitting of 1202-layer ResNet) but does not include an explicit ethics review or broader impact statement."
       },
       {
         "category": "指标完整性",
         "status": "ok",
-        "detail": "Evaluation metrics include top-1 error, top-5 error, mAP@.5, and mAP@[.5,.95], covering classification and detection comprehensively."
+        "detail": "Evaluation metrics are comprehensive, including top-1 and top-5 error for classification, mAP for detection, and both PASCAL VOC and COCO metrics."
       }
     ]
   },
   "pipeline_b_small": {
-    "time_s": 5.3,
+    "time_s": 7.8,
     "classification": {
       "domains": [
-        "NLP"
+        "ML"
       ],
       "method_type": "Empirical",
       "domain_probs": {
-        "NLP": 0.5098,
-        "CV": 0.4894,
-        "ML": 0.4826,
-        "AI": 0.4631
+        "NLP": 0.0012,
+        "CV": 0.0004,
+        "ML": 0.9959,
+        "AI": 0.0039
       },
       "method_probs": {
-        "Empirical": 0.302,
-        "Theoretical": 0.2603,
-        "Survey": 0.23,
-        "Benchmark": 0.2077
+        "Empirical": 0.9999,
+        "Theoretical": 0.0,
+        "Survey": 0.0,
+        "Benchmark": 0.0
       }
     },
     "entities": [
       {
-        "type": "TASK",
-        "start": 0,
-        "end": 1,
-        "text": ""
-      },
-      {
-        "type": "TASK",
+        "type": "METHOD",
         "start": 1,
-        "end": 2,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 2,
-        "end": 3,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 3,
         "end": 4,
-        "text": ""
+        "text": "deep residual learning"
       },
       {
-        "type": "TASK",
-        "start": 4,
-        "end": 5,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 5,
-        "end": 6,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 6,
-        "end": 7,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 7,
-        "end": 8,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 8,
-        "end": 9,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 9,
-        "end": 10,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 10,
-        "end": 11,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 11,
-        "end": 12,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 12,
-        "end": 13,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 13,
-        "end": 14,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 14,
-        "end": 15,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 15,
-        "end": 16,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 16,
-        "end": 17,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 17,
-        "end": 18,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 18,
-        "end": 19,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 19,
-        "end": 20,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 20,
-        "end": 21,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 21,
-        "end": 22,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 22,
-        "end": 23,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 23,
-        "end": 24,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 24,
-        "end": 25,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 25,
-        "end": 26,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 26,
-        "end": 27,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 27,
-        "end": 28,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 28,
-        "end": 29,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 31,
-        "end": 32,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 32,
-        "end": 33,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 33,
-        "end": 34,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 34,
-        "end": 35,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 35,
-        "end": 36,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 36,
-        "end": 37,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 37,
-        "end": 38,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 38,
-        "end": 39,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 39,
-        "end": 40,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 42,
-        "end": 43,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 43,
-        "end": 44,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 44,
-        "end": 45,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 45,
-        "end": 46,
-        "text": ""
-      },
-      {
-        "type": "TASK",
+        "type": "METHOD",
         "start": 46,
-        "end": 47,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 47,
-        "end": 48,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 48,
         "end": 49,
-        "text": ""
+        "text": "deeper neural networks"
       },
       {
-        "type": "TASK",
-        "start": 49,
-        "end": 50,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 50,
-        "end": 51,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 51,
-        "end": 52,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 52,
-        "end": 53,
-        "text": ""
-      },
-      {
-        "type": "DATASET",
-        "start": 53,
-        "end": 55,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 55,
-        "end": 56,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 56,
-        "end": 57,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 0,
-        "end": 1,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 3,
-        "end": 4,
-        "text": ""
-      },
-      {
-        "type": "TASK",
+        "type": "METHOD",
         "start": 4,
-        "end": 5,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 5,
-        "end": 6,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 6,
         "end": 7,
-        "text": ""
+        "text": "deeper neural networks"
       },
       {
-        "type": "TASK",
-        "start": 7,
-        "end": 8,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 8,
-        "end": 9,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 9,
-        "end": 10,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 10,
-        "end": 11,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 11,
-        "end": 12,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 12,
-        "end": 13,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 13,
-        "end": 14,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 14,
-        "end": 15,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 15,
-        "end": 16,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 21,
-        "end": 22,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 22,
-        "end": 23,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 23,
-        "end": 24,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 24,
-        "end": 25,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 25,
-        "end": 26,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 26,
-        "end": 27,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 27,
-        "end": 28,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 28,
-        "end": 29,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 29,
-        "end": 30,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 30,
-        "end": 31,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 31,
-        "end": 32,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 32,
-        "end": 33,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 33,
-        "end": 34,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 34,
-        "end": 35,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 35,
-        "end": 36,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 36,
-        "end": 37,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 37,
-        "end": 38,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 38,
-        "end": 39,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 0,
-        "end": 1,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 1,
-        "end": 2,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 2,
-        "end": 3,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 3,
-        "end": 4,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 4,
-        "end": 5,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 5,
-        "end": 6,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 6,
-        "end": 7,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 7,
-        "end": 8,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 8,
-        "end": 9,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 9,
-        "end": 10,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 10,
-        "end": 11,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 11,
-        "end": 12,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 12,
-        "end": 13,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 13,
-        "end": 14,
-        "text": ""
-      },
-      {
-        "type": "DATASET",
-        "start": 14,
-        "end": 16,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 19,
-        "end": 20,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 20,
-        "end": 21,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 21,
-        "end": 22,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 22,
-        "end": 23,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 23,
-        "end": 24,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 24,
-        "end": 25,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 25,
-        "end": 26,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 26,
-        "end": 27,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 27,
-        "end": 28,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 28,
-        "end": 29,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 29,
-        "end": 30,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 30,
-        "end": 31,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 31,
-        "end": 32,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 32,
-        "end": 33,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 33,
-        "end": 34,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 34,
-        "end": 35,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 35,
-        "end": 36,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 36,
-        "end": 37,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 37,
-        "end": 38,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 38,
-        "end": 39,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 39,
-        "end": 40,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 40,
-        "end": 41,
-        "text": ""
-      },
-      {
-        "type": "TASK",
-        "start": 41,
-        "end": 42,
-        "text": ""
+        "type": "METHOD",
+        "start": 16,
+        "end": 19,
+        "text": "residual learning framework"
       }
     ],
     "summary": [
@@ -965,8 +529,8 @@
     "checklist": [
       {
         "category": "数据集多样性",
-        "status": "partial",
-        "detail": "仅在 2 个数据集上验证 (, )，建议补充更多数据集"
+        "status": "missing",
+        "detail": "未检测到明确的数据集信息"
       },
       {
         "category": "Baseline对比",
