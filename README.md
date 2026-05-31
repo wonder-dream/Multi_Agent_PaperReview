@@ -54,6 +54,68 @@ uv run python compare.py --pdf pdfs/your-paper.pdf
 
 输出 `comparison_report.json`，包含两条 pipeline 的全部结果。
 
+### 4. 服务器训练流程
+
+从本机传代码到服务器：
+
+```bash
+# 本机打包
+git bundle create paperreview.bundle --all
+scp paperreview.bundle user@server:/home/user/
+```
+
+服务器上完整流程：
+
+```bash
+# 1. 解包
+git clone paperreview.bundle Multi_Agent_PaperReview
+cd Multi_Agent_PaperReview
+
+# 2. 环境 (HF 镜像 + PyPI 镜像)
+export HF_ENDPOINT=https://hf-mirror.com
+uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
+
+# 3. 下载数据 (也从 HuggingFace，走镜像)
+uv run python prepare_data.py --all
+
+# 4. 确认 GPU
+nvidia-smi
+
+# 5. 训练分类器
+uv run python -m train.train_classifier \
+    --data data/peerread_train.json \
+    --output checkpoints/classifier \
+    --epochs 5 --batch_size 16 --device cuda
+
+# 6. 训练 NER
+uv run python -m train.train_ner \
+    --data data/scierc_train.json \
+    --output checkpoints/ner \
+    --epochs 10 --batch_size 16 --device cuda
+
+# 7. 评测小模型
+uv run python -c "
+import json, torch
+from src.classifier.model import SciBERTMultiTaskClassifier
+from src.classifier.dataset import PeerReadDataset
+from src.evaluation.eval_classifier import evaluate_classifier
+
+with open('data/peerread_train.json') as f:
+    samples = json.load(f)[:200]
+dataset = PeerReadDataset(samples)
+model = SciBERTMultiTaskClassifier(pretrained=True).to('cuda')
+model.load_state_dict(torch.load('checkpoints/classifier/best_model.pt'))
+print('Classifier F1:', evaluate_classifier(model, dataset, device='cuda'))
+"
+
+# 8. 配 API key
+cp .env.example .env
+# 编辑 .env 填 DEEPSEEK_API_KEY
+
+# 9. 跑对比
+uv run python compare.py --pdf /path/to/paper.pdf --output report.json
+```
+
 ## 项目结构
 
 ```
