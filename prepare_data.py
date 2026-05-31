@@ -80,7 +80,15 @@ def prepare_scierc():
     tar_path = os.path.join(DATA_DIR, "scierc.tar.gz")
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    urlretrieve(url, tar_path)
+
+    def _progress(block_num, block_size, total_size):
+        if total_size > 0:
+            pct = min(block_num * block_size / total_size * 100, 100)
+            downloaded = min(block_num * block_size, total_size)
+            print(f"\r  {downloaded/1024/1024:.1f}/{total_size/1024/1024:.1f} MB ({pct:.0f}%)", end="")
+
+    urlretrieve(url, tar_path, reporthook=_progress)
+    print()
     print("  Downloaded, extracting...")
 
     extract_dir = os.path.join(DATA_DIR, "scierc_raw")
