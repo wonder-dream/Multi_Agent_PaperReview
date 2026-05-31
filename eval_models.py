@@ -35,6 +35,6 @@ for split_name, split_file in [("train", "scierc_train.json"), ("test", "scierc_
     print(f"  NER {split_name} F1: {results[f'ner_{split_name}']['entity_f1']:.4f}")
 
 # --- Save ---
-with open("evaluation_results.json", "w", encoding="utf-8") as f:
+with open("outputs/evaluation_results.json", "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=2)
 print("\nSaved to evaluation_results.json")

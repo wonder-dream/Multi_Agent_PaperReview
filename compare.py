@@ -10,8 +10,13 @@ import os
 import sys
 import time
 
+import torch
 from dotenv import load_dotenv
 load_dotenv()
+
+CHECKPOINT_DIR = "checkpoints"
+CLASSIFIER_CKPT = os.path.join(CHECKPOINT_DIR, "classifier", "best_model.pt")
+NER_CKPT = os.path.join(CHECKPOINT_DIR, "ner", "best_model.pt")
 
 
 def main():
@@ -68,9 +73,21 @@ def main():
     from src.summarizer.textrank import TextRankSummarizer
     from src.summarizer.checklist import ChecklistEngine
 
-    # Load or create models
-    classifier = SciBERTMultiTaskClassifier(pretrained=False, hidden_size=128).to(args.device)
-    ner_model = BiLSTMCRFNER(pretrained=False, hidden_size=128, lstm_hidden=128).to(args.device)
+    # Load trained models (must match training architecture)
+    classifier = SciBERTMultiTaskClassifier(pretrained=True).to(args.device)
+    if os.path.exists(CLASSIFIER_CKPT):
+        classifier.load_state_dict(torch.load(CLASSIFIER_CKPT, map_location=args.device))
+        print(f"  Loaded classifier from {CLASSIFIER_CKPT}")
+    else:
+        print(f"  WARNING: {CLASSIFIER_CKPT} not found, using pretrained weights only")
+
+    ner_model = BiLSTMCRFNER(pretrained=True).to(args.device)
+    if os.path.exists(NER_CKPT):
+        ner_model.load_state_dict(torch.load(NER_CKPT, map_location=args.device))
+        print(f"  Loaded NER model from {NER_CKPT}")
+    else:
+        print(f"  WARNING: {NER_CKPT} not found, using pretrained weights only")
+
     summarizer = TextRankSummarizer()
     checklist_engine = ChecklistEngine()
 
@@ -79,11 +96,11 @@ def main():
     # Classify
     clf_result = classifier.predict_text(text[:2000])
 
-    # NER (simplified: use first chunk)
+    # NER with SciBERT tokenizer (must match model vocabulary)
     from src.preprocessing.sliding_window import chunk_text
     chunks = chunk_text(text, window_size=256, overlap=64)
     from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = AutoTokenizer.from_pretrained("allenai/scibert_scivocab_uncased")
     all_entities = []
     for chunk in chunks[:3]:
         tokens = tokenizer(chunk.text, max_length=256, truncation=True,
@@ -91,6 +108,7 @@ def main():
         ner_out = ner_model.predict(
             tokens["input_ids"].to(args.device),
             tokens["attention_mask"].to(args.device),
+            tokenizer=tokenizer,
         )
         all_entities.extend(ner_out.get("entities", []))
 
