@@ -1,0 +1,998 @@
+{
+  "paper": "pdfs/Deep-Residual.pdf",
+  "text_length": 59435,
+  "pipeline_a_llm": {
+    "time_s": 31.4,
+    "classification": {
+      "domains": [
+        "Computer Vision",
+        "Machine Learning",
+        "Artificial Intelligence"
+      ],
+      "method_type": "Empirical"
+    },
+    "entities": {
+      "entities": [
+        {
+          "text": "ResNet",
+          "type": "MODEL"
+        },
+        {
+          "text": "VGG nets",
+          "type": "MODEL"
+        },
+        {
+          "text": "ImageNet",
+          "type": "DATASET"
+        },
+        {
+          "text": "CIFAR-10",
+          "type": "DATASET"
+        },
+        {
+          "text": "COCO",
+          "type": "DATASET"
+        },
+        {
+          "text": "ILSVRC 2015",
+          "type": "DATASET"
+        },
+        {
+          "text": "PASCAL VOC",
+          "type": "DATASET"
+        },
+        {
+          "text": "top-5 error",
+          "type": "METRIC"
+        },
+        {
+          "text": "top-1 error",
+          "type": "METRIC"
+        },
+        {
+          "text": "mAP",
+          "type": "METRIC"
+        },
+        {
+          "text": "residual learning",
+          "type": "METHOD"
+        },
+        {
+          "text": "shortcut connections",
+          "type": "METHOD"
+        },
+        {
+          "text": "Faster R-CNN",
+          "type": "METHOD"
+        },
+        {
+          "text": "image classification",
+          "type": "TASK"
+        },
+        {
+          "text": "object detection",
+          "type": "TASK"
+        },
+        {
+          "text": "image segmentation",
+          "type": "TASK"
+        },
+        {
+          "text": "image localization",
+          "type": "TASK"
+        }
+      ],
+      "relations": [
+        {
+          "head": "ResNet",
+          "relation": "EVALUATED_ON",
+          "tail": "ImageNet"
+        },
+        {
+          "head": "ResNet",
+          "relation": "EVALUATED_ON",
+          "tail": "CIFAR-10"
+        },
+        {
+          "head": "ResNet",
+          "relation": "EVALUATED_ON",
+          "tail": "COCO"
+        },
+        {
+          "head": "ResNet",
+          "relation": "EVALUATED_ON",
+          "tail": "PASCAL VOC"
+        },
+        {
+          "head": "ResNet",
+          "relation": "ACHIEVES",
+          "tail": "top-5 error"
+        },
+        {
+          "head": "ResNet",
+          "relation": "ACHIEVES",
+          "tail": "top-1 error"
+        },
+        {
+          "head": "ResNet",
+          "relation": "ACHIEVES",
+          "tail": "mAP"
+        },
+        {
+          "head": "ResNet",
+          "relation": "USES",
+          "tail": "residual learning"
+        },
+        {
+          "head": "ResNet",
+          "relation": "USES",
+          "tail": "shortcut connections"
+        },
+        {
+          "head": "Faster R-CNN",
+          "relation": "USES",
+          "tail": "ResNet"
+        },
+        {
+          "head": "ResNet",
+          "relation": "SOLVES",
+          "tail": "image classification"
+        },
+        {
+          "head": "ResNet",
+          "relation": "SOLVES",
+          "tail": "object detection"
+        },
+        {
+          "head": "ResNet",
+          "relation": "SOLVES",
+          "tail": "image segmentation"
+        },
+        {
+          "head": "ResNet",
+          "relation": "SOLVES",
+          "tail": "image localization"
+        }
+      ]
+    },
+    "summary": {
+      "background": "Deeper neural networks are more difficult to train due to the degradation problem, where accuracy saturates and then degrades rapidly with increasing depth, even when not caused by overfitting or vanishing gradients. This paper addresses this optimization difficulty by introducing a deep residual learning framework.",
+      "contributions": [
+        "Proposes residual learning framework that reformulates layers as learning residual functions with reference to layer inputs, making deeper networks easier to optimize.",
+        "Demonstrates that residual networks (ResNets) can gain accuracy from considerably increased depth, achieving state-of-the-art results on ImageNet with up to 152 layers.",
+        "Wins 1st place in ILSVRC 2015 classification, detection, localization, COCO detection, and COCO segmentation competitions.",
+        "Provides comprehensive empirical evidence on ImageNet, CIFAR-10, and object detection tasks showing residual networks overcome the degradation problem."
+      ],
+      "methodology": "The core method introduces shortcut connections that perform identity mapping, adding the input of a stack of layers to its output, effectively learning residual functions F(x) = H(x) - x instead of the original mapping H(x). These identity shortcuts add no extra parameters or computational complexity and can be trained end-to-end with SGD and backpropagation.",
+      "experiments": "Experiments are conducted on ImageNet 2012 classification (1.28M training images, 50k validation, 100k test), CIFAR-10 (50k training, 10k testing), and object detection on PASCAL VOC and MS COCO using Faster R-CNN. Baselines include plain networks of varying depths, VGG nets, GoogLeNet, and Highway networks.",
+      "results": "ResNets with 152 layers achieve 3.57% top-5 error on ImageNet test set, outperforming all previous ensembles. On CIFAR-10, a 110-layer ResNet achieves 6.43% error, and a 1202-layer network trains successfully with <0.1% training error. On COCO detection, ResNet-101 provides a 28% relative improvement in mAP@[.5,.95] over VGG-16.",
+      "limitations": "The 1202-layer ResNet on CIFAR-10 shows higher test error (7.93%) than the 110-layer network (6.43%) due to overfitting, as the model is unnecessarily large for the small dataset. The paper notes that combining with stronger regularization (e.g., maxout or dropout) may improve results but was not explored. Additionally, the optimization difficulties of deep plain nets are not fully explained and left for future study."
+    },
+    "checklist": [
+      {
+        "category": "数据集多样性",
+        "status": "ok",
+        "detail": "The paper uses four datasets (ImageNet, CIFAR-10, PASCAL VOC, MS COCO), exceeding the minimum of three for good diversity."
+      },
+      {
+        "category": "Baseline对比",
+        "status": "ok",
+        "detail": "The paper compares ResNets against plain networks, VGG nets, GoogLeNet, and Highway networks, providing comprehensive baselines."
+      },
+      {
+        "category": "消融实验",
+        "status": "ok",
+        "detail": "Ablation studies are performed on shortcut options (A, B, C) and network depths (18, 34, 50, 101, 152 layers) to isolate the effect of residual learning."
+      },
+      {
+        "category": "代码开源",
+        "status": "missing",
+        "detail": "No code or data links are provided in the paper, which limits reproducibility."
+      },
+      {
+        "category": "伦理声明",
+        "status": "partial",
+        "detail": "The paper discusses limitations (overfitting in 1202-layer ResNet) but does not include an explicit ethics review or broader impact statement."
+      },
+      {
+        "category": "指标完整性",
+        "status": "ok",
+        "detail": "Evaluation metrics include top-1 error, top-5 error, mAP@.5, and mAP@[.5,.95], covering classification and detection comprehensively."
+      }
+    ]
+  },
+  "pipeline_b_small": {
+    "time_s": 5.3,
+    "classification": {
+      "domains": [
+        "NLP"
+      ],
+      "method_type": "Empirical",
+      "domain_probs": {
+        "NLP": 0.5098,
+        "CV": 0.4894,
+        "ML": 0.4826,
+        "AI": 0.4631
+      },
+      "method_probs": {
+        "Empirical": 0.302,
+        "Theoretical": 0.2603,
+        "Survey": 0.23,
+        "Benchmark": 0.2077
+      }
+    },
+    "entities": [
+      {
+        "type": "TASK",
+        "start": 0,
+        "end": 1,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 1,
+        "end": 2,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 2,
+        "end": 3,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 3,
+        "end": 4,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 4,
+        "end": 5,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 5,
+        "end": 6,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 6,
+        "end": 7,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 7,
+        "end": 8,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 8,
+        "end": 9,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 9,
+        "end": 10,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 10,
+        "end": 11,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 11,
+        "end": 12,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 12,
+        "end": 13,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 13,
+        "end": 14,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 14,
+        "end": 15,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 15,
+        "end": 16,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 16,
+        "end": 17,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 17,
+        "end": 18,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 18,
+        "end": 19,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 19,
+        "end": 20,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 20,
+        "end": 21,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 21,
+        "end": 22,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 22,
+        "end": 23,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 23,
+        "end": 24,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 24,
+        "end": 25,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 25,
+        "end": 26,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 26,
+        "end": 27,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 27,
+        "end": 28,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 28,
+        "end": 29,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 31,
+        "end": 32,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 32,
+        "end": 33,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 33,
+        "end": 34,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 34,
+        "end": 35,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 35,
+        "end": 36,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 36,
+        "end": 37,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 37,
+        "end": 38,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 38,
+        "end": 39,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 39,
+        "end": 40,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 42,
+        "end": 43,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 43,
+        "end": 44,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 44,
+        "end": 45,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 45,
+        "end": 46,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 46,
+        "end": 47,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 47,
+        "end": 48,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 48,
+        "end": 49,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 49,
+        "end": 50,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 50,
+        "end": 51,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 51,
+        "end": 52,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 52,
+        "end": 53,
+        "text": ""
+      },
+      {
+        "type": "DATASET",
+        "start": 53,
+        "end": 55,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 55,
+        "end": 56,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 56,
+        "end": 57,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 0,
+        "end": 1,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 3,
+        "end": 4,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 4,
+        "end": 5,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 5,
+        "end": 6,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 6,
+        "end": 7,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 7,
+        "end": 8,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 8,
+        "end": 9,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 9,
+        "end": 10,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 10,
+        "end": 11,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 11,
+        "end": 12,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 12,
+        "end": 13,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 13,
+        "end": 14,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 14,
+        "end": 15,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 15,
+        "end": 16,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 21,
+        "end": 22,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 22,
+        "end": 23,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 23,
+        "end": 24,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 24,
+        "end": 25,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 25,
+        "end": 26,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 26,
+        "end": 27,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 27,
+        "end": 28,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 28,
+        "end": 29,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 29,
+        "end": 30,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 30,
+        "end": 31,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 31,
+        "end": 32,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 32,
+        "end": 33,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 33,
+        "end": 34,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 34,
+        "end": 35,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 35,
+        "end": 36,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 36,
+        "end": 37,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 37,
+        "end": 38,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 38,
+        "end": 39,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 0,
+        "end": 1,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 1,
+        "end": 2,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 2,
+        "end": 3,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 3,
+        "end": 4,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 4,
+        "end": 5,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 5,
+        "end": 6,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 6,
+        "end": 7,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 7,
+        "end": 8,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 8,
+        "end": 9,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 9,
+        "end": 10,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 10,
+        "end": 11,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 11,
+        "end": 12,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 12,
+        "end": 13,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 13,
+        "end": 14,
+        "text": ""
+      },
+      {
+        "type": "DATASET",
+        "start": 14,
+        "end": 16,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 19,
+        "end": 20,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 20,
+        "end": 21,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 21,
+        "end": 22,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 22,
+        "end": 23,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 23,
+        "end": 24,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 24,
+        "end": 25,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 25,
+        "end": 26,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 26,
+        "end": 27,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 27,
+        "end": 28,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 28,
+        "end": 29,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 29,
+        "end": 30,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 30,
+        "end": 31,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 31,
+        "end": 32,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 32,
+        "end": 33,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 33,
+        "end": 34,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 34,
+        "end": 35,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 35,
+        "end": 36,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 36,
+        "end": 37,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 37,
+        "end": 38,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 38,
+        "end": 39,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 39,
+        "end": 40,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 40,
+        "end": 41,
+        "text": ""
+      },
+      {
+        "type": "TASK",
+        "start": 41,
+        "end": 42,
+        "text": ""
+      }
+    ],
+    "summary": [
+      "Training error (left) and test error (right) on CIFAR-10 with 20-layer and 56-layer “plain” networks.",
+      "Identity Mapping by Shortcuts We adopt residual learning to every few stacked layers.",
+      "Object detection mAP (%) on the COCO validation set using baseline Faster R-CNN.",
+      "Table 7 shows the results.",
+      "This result won the 1st place in the ImageNet localization task in ILSVRC 2015."
+    ],
+    "checklist": [
+      {
+        "category": "数据集多样性",
+        "status": "partial",
+        "detail": "仅在 2 个数据集上验证 (, )，建议补充更多数据集"
+      },
+      {
+        "category": "Baseline对比",
+        "status": "missing",
+        "detail": "未检测到明确的模型命名"
+      },
+      {
+        "category": "消融实验",
+        "status": "missing",
+        "detail": "未发现消融实验或各模块贡献分析"
+      },
+      {
+        "category": "代码开源",
+        "status": "ok",
+        "detail": "检测到代码或数据链接"
+      },
+      {
+        "category": "伦理声明",
+        "status": "ok",
+        "detail": "包含伦理相关讨论"
+      },
+      {
+        "category": "指标完整性",
+        "status": "unchecked",
+        "detail": "未检测到明确的评估指标"
+      }
+    ]
+  }
+}

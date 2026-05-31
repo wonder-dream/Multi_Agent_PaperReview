@@ -67,17 +67,18 @@ class BiLSTMCRFNER(nn.Module):
             tags = self.crf.decode(emissions, mask=mask)
         return [[self.labels[t] for t in seq] for seq in tags]
 
-    def predict(self, input_ids, attention_mask):
-        """Decode and extract entities."""
+    def predict(self, input_ids, attention_mask, tokenizer=None):
+        """Decode and extract entities, optionally decoding text with tokenizer."""
         tag_seqs = self.decode(input_ids, attention_mask)
         entities = []
-        for seq in tag_seqs:
-            entities.extend(_tags_to_entities(seq))
+        for i, seq in enumerate(tag_seqs):
+            ids = input_ids[i] if tokenizer is not None else None
+            entities.extend(_tags_to_entities(seq, ids, tokenizer))
         return {"entities": entities}
 
 
-def _tags_to_entities(tags: list) -> list:
-    """Convert BIO tag sequence to entity list."""
+def _tags_to_entities(tags: list, input_ids=None, tokenizer=None) -> list:
+    """Convert BIO tag sequence to entity list, decoding text if tokenizer given."""
     entities = []
     i = 0
     while i < len(tags):
@@ -87,7 +88,10 @@ def _tags_to_entities(tags: list) -> list:
             j = i + 1
             while j < len(tags) and tags[j] == f"I-{etype}":
                 j += 1
-            entities.append({"type": etype, "start": i, "end": j, "text": ""})
+            text = ""
+            if input_ids is not None and tokenizer is not None:
+                text = tokenizer.decode(input_ids[i:j], skip_special_tokens=True)
+            entities.append({"type": etype, "start": i, "end": j, "text": text})
             i = j
         else:
             i += 1

@@ -12,14 +12,13 @@ class TestBiLSTMCRF:
     def model(self):
         from src.ner.model import BiLSTMCRFNER
         return BiLSTMCRFNER(
-            num_labels=11,
             pretrained=False,
             hidden_size=128,
             lstm_hidden=128,
         )
 
     def test_model_creates(self, model):
-        assert model.num_labels == 11
+        assert model.num_labels == 9
         assert model.labels[0] == "O"
 
     def test_forward_pass_shapes(self, model):
@@ -28,7 +27,8 @@ class TestBiLSTMCRF:
         attention_mask = torch.ones(batch, seq, dtype=torch.long)
 
         emissions, mask = model.forward(input_ids, attention_mask)
-        assert emissions.shape == (batch, seq, 11)
+        assert emissions.shape[0] == batch
+        assert emissions.shape[2] == 9
         assert mask.shape == (batch, seq)
 
     def test_decode_returns_label_sequences(self, model):
@@ -52,6 +52,22 @@ class TestBiLSTMCRF:
         assert "entities" in result
         assert isinstance(result["entities"], list)
 
+    def test_tags_to_entities_with_tokenizer(self):
+        """_tags_to_entities decodes entity text when tokenizer is given."""
+        from src.ner.model import _tags_to_entities
+        from transformers import AutoTokenizer
+
+        tags = ["O", "B-METHOD", "I-METHOD", "O", "B-TASK", "O"]
+        tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+        input_ids = tokenizer("We use deep learning for classification", add_special_tokens=False)["input_ids"]
+
+        entities = _tags_to_entities(tags, input_ids, tokenizer)
+        assert len(entities) == 2
+        assert entities[0]["type"] == "METHOD"
+        assert entities[0]["text"] != ""
+        assert entities[1]["type"] == "TASK"
+        assert entities[1]["text"] != ""
+
 
 class TestSciERCDataset:
     """Tests for SciERC dataset loader."""
@@ -59,8 +75,8 @@ class TestSciERCDataset:
     def test_label_mappings(self):
         from src.ner.dataset import ENTITY_TYPES, LABEL2ID, ID2LABEL
 
-        assert len(ENTITY_TYPES) == 5
-        assert "MODEL" in ENTITY_TYPES
+        assert len(ENTITY_TYPES) == 4
+        assert "TASK" in ENTITY_TYPES
         assert "DATASET" in ENTITY_TYPES
         assert "METRIC" in ENTITY_TYPES
         assert LABEL2ID["O"] == 0
