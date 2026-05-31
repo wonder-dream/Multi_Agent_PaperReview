@@ -148,12 +148,19 @@ def prepare_scierc():
                         tok_end = i + 1
                         break
                 if tok_start is not None and tok_end is not None:
-                    entities.append({
-                        "text": parts[2],
-                        "type": etype,
-                        "start": tok_start,
-                        "end": tok_end,
-                    })
+                    # Map SciERC entity types to our 5-class schema
+                    type_map = {
+                        "Task": "TASK", "Method": "METHOD", "Metric": "METRIC",
+                        "Material": "DATASET",
+                    }
+                    mapped = type_map.get(etype)
+                    if mapped:
+                        entities.append({
+                            "text": parts[2],
+                            "type": mapped,
+                            "start": tok_start,
+                            "end": tok_end,
+                        })
 
         if entities:
             all_samples.append({"tokens": tokens, "entities": entities})
