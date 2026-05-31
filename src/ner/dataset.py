@@ -6,7 +6,7 @@ from torch.utils.data import Dataset
 from transformers import AutoTokenizer
 
 
-ENTITY_TYPES = ["MODEL", "DATASET", "METRIC", "METHOD", "TASK"]
+ENTITY_TYPES = ["TASK", "METHOD", "DATASET", "METRIC"]
 
 # BIO label mapping
 LABEL2ID = {"O": 0}
@@ -58,15 +58,15 @@ class SciERCDataset(Dataset):
         prev_word = None
         for wid in word_ids:
             if wid is None:
-                label_ids.append(-100)
+                label_ids.append(0)  # O tag for [CLS]/[SEP]/[PAD] (CRF doesn't support -100)
             elif wid != prev_word:
                 label_ids.append(LABEL2ID.get(word_labels[wid], 0))
             else:
-                # Subword continuation: same label for I-*, else -100
+                # Subword continuation: keep I-* label, else O
                 if word_labels[wid].startswith("I-"):
-                    label_ids.append(LABEL2ID.get(word_labels[wid], -100))
+                    label_ids.append(LABEL2ID.get(word_labels[wid], 0))
                 else:
-                    label_ids.append(-100)
+                    label_ids.append(0)  # O tag for B-* subword pieces
             prev_word = wid
 
         return {

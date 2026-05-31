@@ -27,11 +27,12 @@ def evaluate_ner(model, dataset, batch_size: int = 16, device: str = "cuda") -> 
 
             tags = model.decode(input_ids, attention_mask)
 
+            masks = attention_mask.cpu().numpy()
             for i in range(len(tags)):
                 true_seq = []
                 pred_seq = []
                 for j, (lid, pred) in enumerate(zip(labels[i], tags[i])):
-                    if lid != -100:
+                    if masks[i, j]:  # only evaluate real tokens
                         true_seq.append(model.labels[lid])
                         pred_seq.append(pred)
                 all_true_tags.append(true_seq)
