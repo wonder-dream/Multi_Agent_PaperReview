@@ -19,7 +19,12 @@ def prepare_peerread():
     """Download PeerRead from HF (allenai/peer_read), convert to classification format."""
     print("Downloading PeerRead from HuggingFace (allenai/peer_read, reviews)...")
     from datasets import load_dataset
-    dataset = load_dataset("allenai/peer_read", "reviews", split="train", trust_remote_code=True)
+    dataset_dict = load_dataset(
+        "allenai/peer_read", "reviews",
+        trust_remote_code=True,
+        ignore_verifications=True,
+    )
+    dataset = dataset_dict["train"]
 
     samples = []
     for paper in dataset:
@@ -31,14 +36,19 @@ def prepare_peerread():
             continue
 
         domains = []
-        if any(k in conference for k in ["ACL", "EMNLP", "NAACL", "NLP", "CONLL", "TACL"]):
+        conf_upper = conference.upper()
+        conf_lower = conference.lower()
+        if any(k in conf_upper for k in ["ACL", "EMNLP", "NAACL", "HLT", "CONLL", "TACL"]):
             domains.append("NLP")
-        if any(k in conference for k in ["CVPR", "ICCV", "ECCV"]):
+        if any(k in conf_upper for k in ["CVPR", "ICCV", "ECCV"]):
             domains.append("CV")
-        if any(k in conference for k in ["ICML", "NEURIPS", "NIPS"]):
+        if any(k in conf_upper for k in ["ICML", "NEURIPS", "NIPS"]):
             domains.append("ML")
-        if any(k in conference for k in ["AAAI", "IJCAI", "ICLR"]):
+        if any(k in conf_upper for k in ["AAAI", "IJCAI"]):
             domains.append("AI")
+        if "ICLR" in conf_upper or "iclr" in conf_lower:
+            domains.append("AI")
+            domains.append("ML")
         if not domains:
             domains = ["ML"]
 
@@ -60,36 +70,62 @@ def prepare_peerread():
 
 
 def prepare_scierc():
-    """Download SciERC from HF (tner/scierc), convert to NER BIO format."""
-    print("Downloading SciERC from HuggingFace (tner/scierc)...")
-    from datasets import load_dataset
+    """Download SciERC directly from UW server, convert to NER BIO format."""
+    import tarfile
+    import glob as _glob
+    from urllib.request import urlretrieve
+
+    print("Downloading SciERC from http://nlp.cs.washington.edu/sciIE/ ...")
+    url = "http://nlp.cs.washington.edu/sciIE/data/sciERC_processed.tar.gz"
+    tar_path = os.path.join(DATA_DIR, "scierc.tar.gz")
+
+    os.makedirs(DATA_DIR, exist_ok=True)
+    urlretrieve(url, tar_path)
+    print("  Downloaded, extracting...")
+
+    extract_dir = os.path.join(DATA_DIR, "scierc_raw")
+    os.makedirs(extract_dir, exist_ok=True)
+    with tarfile.open(tar_path, "r:gz") as tar:
+        tar.extractall(extract_dir)
+
+    # Find JSON files
+    json_files = _glob.glob(os.path.join(extract_dir, "**", "*.json"), recursive=True)
+    print(f"  Found {len(json_files)} JSON files")
 
     all_samples = []
-    for split in ["train", "validation", "test"]:
-        try:
-            dataset = load_dataset("tner/scierc", split=split, trust_remote_code=True)
-        except Exception as e:
-            print(f"  tner/scierc {split} failed: {e}")
-            print("  Trying allenai/scierc...")
-            try:
-                dataset = load_dataset("allenai/scierc", split=split, trust_remote_code=True)
-            except Exception:
-                print(f"  Skipping split '{split}'")
-                continue
+    for fpath in json_files:
+        with open(fpath, "r", encoding="utf-8") as f:
+            data = json.load(f)
 
-        for doc in dataset:
-            tokens = doc.get("tokens", doc.get("words", []))
-            if not tokens:
-                continue
-            tags = doc.get("tags", doc.get("ner_tags", doc.get("labels", [])))
-            if not tags:
-                continue
+        # SciERC format: {doc_id: {sentences: [[tokens]], ner: [[start, end, type]], relations: [...]}}
+        if isinstance(data, dict):
+            for doc_id, doc in data.items():
+                if not isinstance(doc, dict):
+                    continue
+                sentences = doc.get("sentences", [])
+                entities = doc.get("ner", [])
+                for sent in sentences:
+                    tokens = sent if isinstance(sent, list) else sent.get("tokens", [])
+                    if not tokens:
+                        continue
+                    sent_entities = []
+                    for ent in entities:
+                        if len(ent) >= 3:
+                            sent_entities.append({
+                                "text": " ".join(tokens[ent[0]:ent[1]]) if ent[0] < len(tokens) else "",
+                                "type": str(ent[2]),
+                                "start": int(ent[0]),
+                                "end": min(int(ent[1]), len(tokens)),
+                            })
+                    all_samples.append({"tokens": tokens, "entities": sent_entities})
 
-            entities = _bio_to_entities(tags)
-            all_samples.append({"tokens": tokens, "entities": entities})
+    # Clean up temp files
+    os.remove(tar_path)
+    import shutil
+    shutil.rmtree(extract_dir, ignore_errors=True)
 
     if not all_samples:
-        print("ERROR: No SciERC samples. Trying alternative NER dataset...")
+        print("ERROR: No SciERC samples extracted.")
         all_samples = _fallback_ner_samples()
 
     n = len(all_samples)
