@@ -18,45 +18,8 @@ DATA_DIR = "data"
 def prepare_peerread():
     """Download PeerRead from HF (allenai/peer_read), convert to classification format."""
     print("Downloading PeerRead from HuggingFace (allenai/peer_read, reviews)...")
-
-    from huggingface_hub import list_repo_files, hf_hub_download
-    import pandas as pd
-
-    # List available parquet files
-    files = list_repo_files("allenai/peer_read", repo_type="dataset")
-    parquet_files = [f for f in files if f.startswith("data/reviews/") and f.endswith(".parquet")]
-
-    if not parquet_files:
-        # Try JSONL fallback
-        jsonl_files = [f for f in files if f.startswith("data/reviews/") and f.endswith(".jsonl")]
-        if jsonl_files:
-            import json as _json
-            samples_list = []
-            for jf in jsonl_files:
-                path = hf_hub_download("allenai/peer_read", jf, repo_type="dataset")
-                with open(path) as fh:
-                    for line in fh:
-                        samples_list.append(_json.loads(line))
-        else:
-            print("ERROR: No parquet or jsonl files found in allenai/peer_read")
-            print(f"  Available files: {files[:20]}")
-            sys.exit(1)
-    else:
-        samples_list = []
-        for pf in parquet_files:
-            path = hf_hub_download("allenai/peer_read", pf, repo_type="dataset")
-            df = pd.read_parquet(path)
-            samples_list.extend(df.to_dict("records"))
-
-    # Wrap in a simple iterable
-    class _ListDataset:
-        def __init__(self, data):
-            self._data = data
-        def __iter__(self):
-            return iter(self._data)
-        def __len__(self):
-            return len(self._data)
-    dataset = _ListDataset(samples_list)
+    from datasets import load_dataset
+    dataset = load_dataset("allenai/peer_read", "reviews", split="train", trust_remote_code=True)
 
     samples = []
     for paper in dataset:
@@ -104,12 +67,12 @@ def prepare_scierc():
     all_samples = []
     for split in ["train", "validation", "test"]:
         try:
-            dataset = load_dataset("tner/scierc", split=split, trust_remote_code=False)
+            dataset = load_dataset("tner/scierc", split=split, trust_remote_code=True)
         except Exception as e:
             print(f"  tner/scierc {split} failed: {e}")
             print("  Trying allenai/scierc...")
             try:
-                dataset = load_dataset("allenai/scierc", split=split, trust_remote_code=False)
+                dataset = load_dataset("allenai/scierc", split=split, trust_remote_code=True)
             except Exception:
                 print(f"  Skipping split '{split}'")
                 continue
