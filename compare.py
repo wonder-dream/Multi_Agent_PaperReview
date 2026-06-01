@@ -76,14 +76,14 @@ def main():
     # Load trained models (must match training architecture)
     classifier = SciBERTMultiTaskClassifier(pretrained=True).to(args.device)
     if os.path.exists(CLASSIFIER_CKPT):
-        classifier.load_state_dict(torch.load(CLASSIFIER_CKPT, map_location=args.device))
+        classifier.load_state_dict(torch.load(CLASSIFIER_CKPT, map_location=args.device, weights_only=True))
         print(f"  Loaded classifier from {CLASSIFIER_CKPT}")
     else:
         print(f"  WARNING: {CLASSIFIER_CKPT} not found, using pretrained weights only")
 
     ner_model = BiLSTMCRFNER(pretrained=True).to(args.device)
     if os.path.exists(NER_CKPT):
-        ner_model.load_state_dict(torch.load(NER_CKPT, map_location=args.device))
+        ner_model.load_state_dict(torch.load(NER_CKPT, map_location=args.device, weights_only=True))
         print(f"  Loaded NER model from {NER_CKPT}")
     else:
         print(f"  WARNING: {NER_CKPT} not found, using pretrained weights only")

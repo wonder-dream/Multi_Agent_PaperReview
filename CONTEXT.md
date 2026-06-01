@@ -8,6 +8,8 @@
 - **纯小模型方案 (Small-Model Pipeline)**：SciBERT 微调分类器 + SciBERT-BiLSTM-CRF NER + TextRank 抽取式摘要，不使用 LLM 参与语义分析。
 - **滑动窗口 (Sliding Window)**：解决小模型 512 token 限制的长文档处理策略，通过重叠分块 + 结果合并实现对全文的覆盖。具体参数通过超参实验确定（保守配置: 512+128 重叠+直接拼接 vs 激进配置: 512+256 重叠+段落边界感知+基于偏移合并），选 F1 更高的配置。
 - **对比实验 (Comparison Experiment)**：两个方案在相同数据集上独立跑，用标准指标比较，不做混合交叉。
+- **NER 正则化策略**：由于 SciERC 仅 3401 条训练样本而 SciBERT+BiLSTM 容量过大，train-test F1 差距达 35pp。通过冻结 SciBERT embedding + 底层、增加 dropout (0.4)、weight decay (0.01)、梯度裁剪 (1.0) 来控制过拟合。METRIC 类仅占 6.8% 样本，使用 class_weight=3.0 + WeightedRandomSampler 处理尾部塌缩。
+- **分类器正则化策略**：PeerRead 领域分布不均衡，分类器 ML F1 0.97 而 NLP F1 仅 0.19。冻结 SciBERT embedding + 10 层、dropout 0.1→0.3、weight decay、梯度裁剪、ReduceLROnPlateau + 早停。
 
 ## 两个 Pipeline 结构
 
@@ -30,9 +32,9 @@ PDF 解析 → 全文文本
 PDF 解析 → 全文文本
     │
     ├──→ 滑动窗口分块 → SciBERT 分类器 (每窗口预测 → 投票聚合) → {domains, method_type}
-    ├──→ 滑动窗口分块 → BiLSTM-CRF NER (每窗口 B-I-O 标注 → 偏移合并去重) → {entities}
-    └──→ TextRank + SciBERT 句子编码 → MMR 多样性惩罚 → {extractive_summary}
-         └──→ 基于抽取实体 + 规则引擎 → {checklist_items}
+    ├──→ SciBERT(frozen emb+10层) + BiLSTM(256×2) + CRF → {entities}
+    ├──→ TextRank + SciBERT 句子编码 → MMR 多样性惩罚 → {extractive_summary}
+    └──→ 规则引擎：基于抽取实体 + 关键词 → {checklist_items}
 ```
 
 所有模型为本地推理，不依赖外部 API。

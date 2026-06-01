@@ -1,19 +1,15 @@
 {
   "classifier": {
-    "domain_macro_f1": 0.47856081047319243,
+    "domain_macro_f1": 0.2419602881058984,
     "method_accuracy": 1.0,
     "per_domain_f1": {
-      "NLP": 0.19047619047619047,
-      "ML": 0.9737670514165793,
-      "AI": 0.75
+      "NLP": 0.03636363636363636,
+      "ML": 0.9314775160599572,
+      "AI": 0.0
     }
   },
-  "ner_train": {
-    "entity_f1": 0.5642029203673039,
-    "report": "              precision    recall  f1-score   support\n\n     DATASET       0.51      0.35      0.42       608\n      METHOD       0.63      0.70      0.66      1558\n      METRIC       0.13      0.05      0.07       231\n        TASK       0.56      0.56      0.56      1004\n\n   micro avg       0.58      0.55      0.56      3401\n   macro avg       0.46      0.41      0.43      3401\nweighted avg       0.55      0.55      0.55      3401\n"
-  },
   "ner_test": {
-    "entity_f1": 0.21150855365474341,
-    "report": "              precision    recall  f1-score   support\n\n     DATASET       0.22      0.13      0.16        77\n      METHOD       0.21      0.28      0.24       129\n      METRIC       0.00      0.00      0.00        26\n        TASK       0.23      0.24      0.24        90\n\n   micro avg       0.21      0.21      0.21       322\n   macro avg       0.17      0.16      0.16       322\nweighted avg       0.20      0.21      0.20       322\n"
+    "entity_f1": 0.28503562945368177,
+    "report": "              precision    recall  f1-score   support\n\n     DATASET       0.33      0.23      0.27        90\n      METHOD       0.25      0.34      0.29       153\n      METRIC       0.26      0.36      0.30        28\n        TASK       0.25      0.34      0.29       108\n\n   micro avg       0.26      0.32      0.29       379\n   macro avg       0.27      0.32      0.29       379\nweighted avg       0.27      0.32      0.28       379\n"
   }
 }
