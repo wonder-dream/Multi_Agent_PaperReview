@@ -100,6 +100,10 @@ def prepare_scierc():
     txt_files = _glob.glob(os.path.join(extract_dir, "**", "*.txt"), recursive=True)
     print(f"  Found {len(txt_files)} text files in BRAT format")
 
+    # Sentence boundary punctuation for rough sentence splitting
+    import re
+    SENT_BOUNDARY = re.compile(r'(?<=[.!?])\s+')
+
     all_samples = []
     for txt_path in txt_files:
         ann_path = txt_path.replace(".txt", ".ann")
@@ -109,21 +113,21 @@ def prepare_scierc():
         with open(txt_path, "r", encoding="utf-8") as f:
             raw_text = f.read().strip()
 
-        # Build token-to-character mapping
-        tokens = raw_text.split()
-        token_spans = []  # (start_char, end_char) per token
-        pos = 0
-        for tok in tokens:
-            idx = raw_text.find(tok, pos)
-            if idx == -1:
-                token_spans.append((pos, pos + len(tok)))
-                pos = pos + len(tok) + 1
-            else:
-                token_spans.append((idx, idx + len(tok)))
-                pos = idx + len(tok)
+        # Split document into sentences for sentence-level samples
+        sentences = SENT_BOUNDARY.split(raw_text)
+        # Build global token-to-character mapping for each sentence
+        offset = 0
+        sent_spans = []
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                offset += len(sent) + 1
+                continue
+            sent_spans.append((offset, offset + len(sent)))
+            offset += len(sent) + 1  # +1 for the space/punctuation
 
-        # Parse .ann entities
-        entities = []
+        # Parse .ann entities with character-level spans
+        ann_entities = []
         with open(ann_path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
@@ -138,7 +142,42 @@ def prepare_scierc():
                 etype = tag_parts[0]
                 c_start = int(tag_parts[1])
                 c_end = int(tag_parts[2])
-                # Map character offsets to token indices
+                type_map = {
+                    "Task": "TASK", "Method": "METHOD", "Metric": "METRIC",
+                    "Material": "DATASET",
+                }
+                mapped = type_map.get(etype)
+                if mapped:
+                    ann_entities.append({
+                        "text": parts[2], "type": mapped,
+                        "c_start": c_start, "c_end": c_end,
+                    })
+
+        # Assign entities to sentences based on character overlap
+        for sent_start, sent_end in sent_spans:
+            sent_text = raw_text[sent_start:sent_end]
+            tokens = sent_text.split()
+            if not tokens:
+                continue
+            # Token character spans relative to sentence start
+            token_spans = []
+            pos = 0
+            for tok in tokens:
+                idx = sent_text.find(tok, pos)
+                if idx == -1:
+                    token_spans.append((pos, pos + len(tok)))
+                    pos = pos + len(tok) + 1
+                else:
+                    token_spans.append((idx, idx + len(tok)))
+                    pos = idx + len(tok)
+
+            entities = []
+            for ae in ann_entities:
+                if ae["c_end"] <= sent_start or ae["c_start"] >= sent_end:
+                    continue  # entity not in this sentence
+                # Map to token indices within this sentence
+                c_start = ae["c_start"] - sent_start
+                c_end = ae["c_end"] - sent_start
                 tok_start = None
                 tok_end = None
                 for i, (ts, te) in enumerate(token_spans):
@@ -148,22 +187,14 @@ def prepare_scierc():
                         tok_end = i + 1
                         break
                 if tok_start is not None and tok_end is not None:
-                    # Map SciERC entity types to our 5-class schema
-                    type_map = {
-                        "Task": "TASK", "Method": "METHOD", "Metric": "METRIC",
-                        "Material": "DATASET",
-                    }
-                    mapped = type_map.get(etype)
-                    if mapped:
-                        entities.append({
-                            "text": parts[2],
-                            "type": mapped,
-                            "start": tok_start,
-                            "end": tok_end,
-                        })
-
-        if entities:
-            all_samples.append({"tokens": tokens, "entities": entities})
+                    entities.append({
+                        "text": ae["text"],
+                        "type": ae["type"],
+                        "start": tok_start,
+                        "end": tok_end,
+                    })
+            if entities:
+                all_samples.append({"tokens": tokens, "entities": entities})
 
     # Clean up temp files
     os.remove(tar_path)
