@@ -39,6 +39,16 @@ uv sync --index-url https://pypi.tuna.tsinghua.edu.cn/simple
 export HF_ENDPOINT=https://hf-mirror.com
 ```
 
+**GPU 训练需要 CUDA 版 PyTorch**（`uv sync` 默认装 CPU 版）：
+
+```bash
+# 安装 CUDA 12.1 版 PyTorch（覆盖 CPU 版本）
+uv pip install --reinstall torch --index-url https://download.pytorch.org/whl/cu121
+
+# 验证 CUDA 可用
+python -c "import torch; print(torch.cuda.is_available())"
+```
+
 ### 2. 设置 API Key
 
 ```bash
@@ -85,13 +95,14 @@ nvidia-smi
 uv run python -m train.train_classifier \
     --data data/peerread_train.json \
     --output checkpoints/classifier \
-    --epochs 5 --batch_size 16 --device cuda
+    --epochs 5 --batch_size 16 --device cuda --freeze_layers 10
 
 # 6. 训练 NER
 uv run python -m train.train_ner \
-    --data data/scierc_train.json \
+    --train_data data/scierc_train.json \
+    --val_data data/scierc_val.json \
     --output checkpoints/ner \
-    --epochs 10 --batch_size 16 --device cuda
+    --epochs 10 --batch_size 16 --device cuda --freeze_layers 10
 
 # 7. 评测小模型
 uv run python -c "
@@ -154,13 +165,13 @@ PDF → 全文文本 → 4 次独立 API 调用:
 
 ```
 PDF → 全文文本 → 滑动窗口分块 → 三条独立路径:
-  1. SciBERT 分类器（每窗口预测 → 投票聚合）→ {domains, method_type}
-  2. BiLSTM-CRF NER（每窗口标注 → 偏移合并）→ {entities}
+  1. SciBERT(frozen) 分类器（每窗口预测 → 投票聚合）→ {domains, method_type}
+  2. SciBERT(frozen) + BiLSTM(256×2) + CRF（每窗口标注 → 偏移合并）→ {entities}
   3. TextRank 抽取式摘要 + 规则引擎 → {summary, checklist}
 ```
 
-- 分类器：`src/classifier/model.py` — SciBERT + Domain head + Method head
-- NER：`src/ner/model.py` — SciBERT + BiLSTM(384×2) + CRF（11 类 BIO 标签）
+- 分类器：`src/classifier/model.py` — SciBERT(frozen emb+10层) + Domain head + Method head（dropout=0.3）
+- NER：`src/ner/model.py` — SciBERT(frozen emb+10层) + BiLSTM(256×2) + CRF（9 类 BIO 标签，dropout=0.4）
 - 摘要：`src/summarizer/textrank.py` — TF-IDF / SciBERT 句子编码 + PageRank + MMR
 - 检查清单：`src/summarizer/checklist.py` — 6 类规则检查
 
@@ -261,16 +272,19 @@ e.generate(entities, paper_text=text)     # → [{category, status, detail}]
 uv run python -m train.train_classifier \
     --data data/peerread_train.json \
     --output checkpoints/classifier \
-    --epochs 5 --batch_size 16
+    --epochs 5 --batch_size 16 --freeze_layers 10
 ```
 
 ### 训 NER
 ```bash
 uv run python -m train.train_ner \
-    --data data/scierc_train.json \
+    --train_data data/scierc_train.json \
+    --val_data data/scierc_val.json \
     --output checkpoints/ner \
-    --epochs 10 --batch_size 16
+    --epochs 10 --batch_size 16 --freeze_layers 10
 ```
+
+训练过程中会输出每 epoch 的 val F1，自动早停并保存最佳模型。
 
 5090 上这两个训练各约 1-2 小时（取决于数据量）。
 

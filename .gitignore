@@ -193,4 +193,4 @@ processed_data/arxiv_PeerRead_merge_data/retrieval/merged_*_pairs.jsonl
 # PeerRead 检索 (PeerRead_processed 重新生成)
 processed_data/PeerRead_processed_data/retrieval/
 # 模型检查点
-checkpoints/
+checkpoints/.idea/pyProjectModel.xml
