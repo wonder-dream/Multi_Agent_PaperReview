@@ -24,8 +24,9 @@ class BiLSTMCRFNER(nn.Module):
         pretrained: bool = True,
         model_name: str = "allenai/scibert_scivocab_uncased",
         hidden_size: int = 128,
-        lstm_hidden: int = 384,
-        dropout: float = 0.1,
+        lstm_hidden: int = 256,
+        dropout: float = 0.4,
+        freeze_layers: int = 0,
     ):
         from torchcrf import CRF
 
@@ -44,6 +45,14 @@ class BiLSTMCRFNER(nn.Module):
                 vocab_size=31090,
             )
             self.bert = BertModel(config)
+
+        if freeze_layers > 0:
+            # Freeze embedding + bottom N encoder layers
+            for p in self.bert.embeddings.parameters():
+                p.requires_grad_(False)
+            for i in range(min(freeze_layers, self.bert.config.num_hidden_layers)):
+                for p in self.bert.encoder.layer[i].parameters():
+                    p.requires_grad_(False)
 
         bert_dim = self.bert.config.hidden_size
         self.dropout = nn.Dropout(dropout)

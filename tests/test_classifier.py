@@ -18,6 +18,27 @@ class TestMultiTaskClassifier:
             hidden_size=128,
         )
 
+    def test_freeze_layers_freezes_bottom_bert(self):
+        """freeze_layers=1 freezes embeddings + 1st encoder layer."""
+        from src.classifier.model import SciBERTMultiTaskClassifier
+
+        m = SciBERTMultiTaskClassifier(
+            num_domains=4, num_methods=4,
+            pretrained=False, hidden_size=128, freeze_layers=1,
+        )
+        for name, p in m.named_parameters():
+            if "embeddings" in name or "encoder.layer.0" in name:
+                assert not p.requires_grad, f"{name} should be frozen"
+            elif "encoder.layer.1" in name:
+                assert p.requires_grad, f"{name} should be trainable"
+
+    def test_default_dropout_is_0_3(self):
+        """Default dropout raised from 0.1 to 0.3 for regularization."""
+        from src.classifier.model import SciBERTMultiTaskClassifier
+
+        m = SciBERTMultiTaskClassifier(pretrained=False, hidden_size=128)
+        assert m.dropout.p == 0.3
+
     def test_model_creates_successfully(self, model):
         assert model is not None
         assert model.num_domains == 4

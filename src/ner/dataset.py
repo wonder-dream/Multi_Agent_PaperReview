@@ -74,3 +74,20 @@ class SciERCDataset(Dataset):
             "attention_mask": encoding["attention_mask"].squeeze(0),
             "labels": torch.tensor(label_ids, dtype=torch.long),
         }
+
+
+def compute_sample_weights(samples: List[Dict], class_weight: Dict[str, float]) -> List[float]:
+    """Return per-sample weight based on entity types in each sample.
+
+    Weight is max over class_weight mapping for all entity types present.
+    Samples with no entities get weight 1.0.
+    """
+    weights = []
+    for sample in samples:
+        weight = 1.0
+        for ent in sample.get("entities", []):
+            w = class_weight.get(ent["type"], 1.0)
+            if w > weight:
+                weight = w
+        weights.append(weight)
+    return weights
